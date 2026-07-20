@@ -97,12 +97,11 @@
     <h2>What we'll cover</h2>
     <div class="cols">
       <div class="card">
-        <h3>Part 1 — Web attacks <span class="badge danger">attacks</span></h3>
+        <h3>Part 1 — WAF <span class="badge danger">attacks</span></h3>
         <ul>
           <li>SQL Injection — login bypass</li>
           <li>Stored XSS → session theft → takeover</li>
-          <li>Broken Access Control — a design flaw demo</li>
-          <li>How DP WAF stops SQLi & XSS</li>
+          <li>How DP WAF stops both</li>
         </ul>
       </div>
       <div class="card">
@@ -169,7 +168,7 @@
     <h2>Your training environment</h2>
     <p>Open <code>http://<host>:6060</code> — a deliberately <b class="danger">vulnerable-by-design</b> app. Two scenarios:</p>
     <div class="cols">
-      <div class="card"><h3>🔓 Web attack chain</h3><p class="sub">Login → dashboard → feedback → attacker console. SQLi, stored XSS, plus a design flaw demo (cookie tampering — WAF doesn't catch that one).</p></div>
+      <div class="card"><h3>🔓 Web attack chain</h3><p class="sub">Login → dashboard → feedback → attacker console. SQLi bypass + stored XSS session theft.</p></div>
       <div class="card"><h3>⚖️ Live capacity test</h3><p class="sub">Each origin serves only 2 IPs. Watch it fall over, then load-balance it.</p></div>
     </div>
     <p class="sub" style="margin-top:1rem">⚠ Vulnerable on purpose. Local, authorized training only — never expose it publicly.</p>
@@ -204,37 +203,9 @@ WHERE user = '<span class="danger">admin' --</span>' AND pass = ''</pre>
     </div></div>
   </section>
 
-  <!-- 7 BAC -->
+  <!-- 7 XSS -->
   <section class="slide">
     <div class="kicker">Part 1 · Attack 2 <span class="badge demo">live demo</span></div>
-    <h2>Broken Access Control — edit your own cookie</h2>
-    <p class="sub" style="margin-bottom:1rem">⚠ This is a <b>design flaw</b>, not a request-level attack. A WAF can't catch it — the fix is in the backend code.</p>
-    <div class="cols">
-      <div>
-        <p>After login you get a role-based dashboard. The role lives in an <b>unsigned cookie</b> the server blindly trusts:</p>
-        <pre>dpwaf_session = base64({"user":"guest",
-                        "role":"<span class="danger">user</span>"})</pre>
-        <p>Change <code>user</code> → <code>administrator</code>, reload, and the <b class="danger">admin sidebar appears</b>.</p>
-      </div>
-      <div class="card">
-        <h3>Demo steps</h3>
-        <ol class="steps">
-          <li>Log in as <code>guest / guest</code></li>
-          <li>See the <b>standard-user</b> sidebar</li>
-          <li>DevTools → Application → Cookies</li>
-          <li>Paste the admin cookie (shown on the page)</li>
-          <li>Reload → <b>admin</b> dashboard + User Mgmt</li>
-        </ol>
-      </div>
-    </div>
-    <div class="notes"><div class="meta">⏱ ~3 min · DEMO (presenter on screen — participants watch)</div><div class="body">
-      Log in as <code>guest</code> first — show the limited menu (Dashboard/Profile/Tickets). Highlight the on-page "escalate yourself" panel with the click-to-copy admin cookie. Open DevTools live, swap the <code>dpwaf_session</code> value, reload — the Administration section, User Management table, and All Feedback panel appear. Teaching point for NOC: <b>never trust client-side state for authorization</b>. This is OWASP's #1 category (Broken Access Control). Crucially, this is a <b>backend design flaw</b> — a WAF can't stop it because the request looks perfectly normal. The lesson: WAF blocks injection attacks, but design flaws like unsigned sessions need code fixes. Tie it forward: this same cookie is what the XSS attack will steal next.
-    </div></div>
-  </section>
-
-  <!-- 8 XSS -->
-  <section class="slide">
-    <div class="kicker">Part 1 · Attack 3 <span class="badge demo">live demo</span></div>
     <h2>Stored XSS → session theft → <span class="danger">takeover</span></h2>
     <div class="flow" style="margin:.4rem 0 1rem">
       <div class="node">Public feedback form</div><div class="arw">→</div>
@@ -261,9 +232,8 @@ WHERE user = '<span class="danger">admin' --</span>' AND pass = ''</pre>
         <li>Malicious request <b>blocked at the edge</b></li>
         <li>Origin never even sees it</li></ul></div>
     </div>
-    <p class="sub" style="margin-top:.6rem">Cookie tampering (BAC) is <b>not</b> WAF-blockable — it needs signed server-side sessions. WAF stops the attacks that deliver the payload, not the design flaws.</p>
     <div class="notes"><div class="meta">⏱ ~2 min</div><div class="body">
-      Recap: WAF blocks SQLi and XSS by inspecting layer-7 content. Be honest — a WAF is <b>defense in depth</b>, not a substitute for fixing the code (parameterized queries, signed sessions, output encoding). BAC (cookie tampering) is a design flaw — the request is perfectly normal, so WAF can't detect it; that's a code fix. But when malicious payloads <em>are</em> present (SQLi, XSS), the WAF catches them at the edge across <b>all</b> apps. Transition: "Blocking attacks keeps you secure — but you also have to stay <b>up</b>. That's Part 2."
+      Recap: WAF blocks SQLi and XSS by inspecting layer-7 content. Be honest — a WAF is <b>defense in depth</b>, not a substitute for fixing the code (parameterized queries, output encoding). But it catches known patterns across <b>all</b> apps instantly. Transition: "Blocking attacks keeps you secure — but you also have to stay <b>up</b>. That's Part 2."
     </div></div>
   </section>
 
@@ -367,8 +337,7 @@ npm run lb        # :6060 → spreads (IP Hash)</pre>
     <div class="kicker">Wrap-up</div>
     <h2>Takeaways for NOC</h2>
     <ul>
-      <li>🛡️ <b>WAF = layer-7 guard.</b> Blocks SQLi/XSS/injection patterns the network firewall can't see.</li>
-      <li>🔑 <b>Signed sessions, not cookie roles.</b> BAC (cookie tampering) is a backend design flaw — WAF can't fix it. Always validate server-side.</li>
+      <li>🛡️ <b>WAF = layer-7 guard.</b> Blocks SQLi & XSS — injections the network firewall can't see.</li>
       <li>⚖️ <b>Load balancing = availability.</b> Horizontal scale removes the single-origin wall.</li>
       <li>🚧 <b>Per-IP control = DDoS defense.</b> Spread the good, drop the bad, at the edge.</li>
       <li>👀 <b>You're the first responders.</b> Now you know the signatures: 503 spikes, single-IP floods, injection strings in logs.</li>
@@ -398,7 +367,7 @@ npm run lb        # :6060 → spreads (IP Hash)</pre>
 </div>
 
 <div id="bar"></div>
-<div id="hud">1 / 15</div>
+<div id="hud">1 / 14</div>
 <div id="hint">← → navigate · <kbd>S</kbd> speaker notes · <kbd>F</kbd> fullscreen</div>
 <div id="nav"><button onclick="go(-1)">‹</button><button onclick="go(1)">›</button></div>
 <div id="notes"><h4>Speaker notes</h4><div class="content"></div></div>
