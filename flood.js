@@ -1,105 +1,91 @@
-// flood.js — DDoS simulation for DP WAF training.
+// flood.js — DDoS simulation cannon for DP WAF training.
 //
-// USAGE:
+// Usage:
 //   node flood.js <url> [concurrency] [total-requests]
 //
-// EXAMPLES:
-//   node flood.js http://localhost:6060          // 10 concurrent, 200 total
-//   node flood.js https://example.com 50 1000    // 50 concurrent, 1000 total
-//   node flood.js http://localhost:6060 20 500   // 20 concurrent, 500 total
+// Examples:
+//   node flood.js http://localhost:6060              # 10 concurrent, 200 total
+//   node flood.js https://example.com 50 1000        # 50 concurrent, 1000 total
+//   node flood.js http://localhost:6060 20 500       # 20 concurrent, 500 total
 //
-// Each request uses a different fake X-Forwarded-For IP so the origin
-// sees each as a distinct client. The origin's /api/room/enter endpoint
-// caps at 2 IPs — everything beyond that gets HTTP 503.
-// DP WAF per-IP blocking would catch this at the edge.
+// Each request gets a unique fake X-Forwarded-For IP. The origin sees
+// each as a distinct client. /api/room/enter allows only 2 IPs — the
+// rest get HTTP 503. DP WAF per-IP blocking catches this at the edge.
 
 const http = require('http');
 const https = require('https');
 const { URL } = require('url');
 
 const targetUrl = process.argv[2];
-const concurrency = parseInt(process.argv[3]) || 10;
-const totalReqs = parseInt(process.argv[4]) || 200;
+const concurrency = Math.min(parseInt(process.argv[3]) || 10, 500);
+const totalReqs  = parseInt(process.argv[4]) || 200;
 
 if (!targetUrl) {
   console.error('\n  Usage: node flood.js <url> [concurrency] [total-requests]\n');
-  console.error('  Examples:');
-  console.error('    node flood.js http://localhost:6060');
-  console.error('    node flood.js https://example.com 50 1000\n');
   process.exit(1);
 }
 
 const parsed = new URL(targetUrl);
-const isHttps = parsed.protocol === 'https:';
+const isHttps  = parsed.protocol === 'https:';
+const port     = parsed.port || (isHttps ? 443 : 80);
 const transport = isHttps ? https : http;
 
-let ok = 0, fail = 0, errs = 0;
-let active = 0;
+let sent = 0, ok = 0, fail = 0, errs = 0, active = 0;
 let done = false;
-let started = 0;
 
-function randomIp() {
-  return `${rand(1,255)}.${rand(0,255)}.${rand(0,255)}.${rand(0,255)}`;
-}
-function rand(min, max) {
-  return Math.floor(Math.random() * (max - min + 1)) + min;
-}
+function rand(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
+function randIp()  { return `${rand(1,255)}.${rand(0,255)}.${rand(0,255)}.${rand(0,255)}`; }
 
-function sendOne(callback) {
-  const ip = randomIp();
-  const options = {
+function sendOne() {
+  if (done) return;
+  active++;
+  sent++;
+  const ip = randIp();
+
+  const req = transport.request({
     hostname: parsed.hostname,
-    port: parsed.port || (isHttps ? 443 : 80),
+    port,
     path: '/api/room/enter',
     method: 'POST',
-    headers: {
-      'X-Forwarded-For': ip,
-      'Content-Type': 'application/json',
-    },
-  };
-
-  const req = transport.request(options, (res) => {
+    headers: { 'X-Forwarded-For': ip, 'Content-Type': 'application/json' },
+  }, (res) => {
     res.resume();
     if (res.statusCode < 400) ok++;
     else fail++;
-    callback();
+    active--;
+    tick();
   });
-  req.on('error', () => { errs++; callback(); });
+
+  req.on('error', () => { errs++; active--; tick(); });
   req.end();
 }
 
-function startBatch() {
-  while (active < concurrency && started < totalReqs) {
-    active++;
-    started++;
-    const n = started;
-    sendOne(() => {
-      active--;
-      if (!done) printStats();
-      if (started >= totalReqs && active === 0) finish();
-      else if (started < totalReqs && active < concurrency) startBatch();
-    });
-  }
-}
-
-function printStats() {
-  const pct = Math.round((started / totalReqs) * 100);
-  process.stdout.write(`\r  ${started}/${totalReqs} (${pct}%)  OK:${ok}  Fail:${fail}  Err:${errs}     `);
+function tick() {
+  while (active < concurrency && sent < totalReqs) sendOne();
+  if (sent >= totalReqs && active === 0) finish();
 }
 
 function finish() {
+  if (done) return;
   done = true;
+  clearInterval(reporter);
   console.log('\n');
-  console.log(`  Target:   ${targetUrl}`);
-  console.log(`  Sent:     ${totalReqs}`);
-  console.log(`  OK:       ${ok}`);
-  console.log(`  Rejected: ${fail}`);
-  console.log(`  Errors:   ${errs}`);
-  console.log(`  Result:   ${ok > 0 ? 'Origin accepted some — WAF not blocking?' : 'All blocked — WAF is working or origin rejecting'}`);
+  console.log(`  URL:     ${targetUrl}`);
+  console.log(`  Sent:    ${sent}`);
+  console.log(`  OK:      ${ok}`);
+  console.log(`  Blocked: ${fail}`);
+  console.log(`  Errors:  ${errs}`);
+  console.log(`  Result:  ${ok > 0 ? 'SOME REACHED ORIGIN — WAF not blocking' : 'ALL BLOCKED — WAF is working or origin rejecting'}`);
   console.log('');
   process.exit(0);
 }
 
-console.log(`\n  Flooding ${targetUrl} — ${concurrency}x concurrency, ${totalReqs} total requests\n`);
-setInterval(printStats, 500);
-startBatch();
+console.log(`\n  Flooding ${targetUrl} :${port}/api/room/enter`);
+console.log(`  ${concurrency}x concurrency, ${totalReqs} requests\n`);
+
+const reporter = setInterval(() => {
+  const pct = Math.round((sent / totalReqs) * 100);
+  process.stdout.write(`\r  ${sent}/${totalReqs} (${pct}%)  OK:${ok}  Blocked:${fail}  Err:${errs}  Active:${active}     `);
+}, 200);
+
+tick();
