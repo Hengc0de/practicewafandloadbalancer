@@ -35,6 +35,13 @@ function pickOrigin(clientIp) {
 }
 
 const server = http.createServer((req, res) => {
+  // Permissive CORS so flood/attack test tools can target the balancer from a
+  // page served on a different port. Lab-only convenience.
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-Forwarded-For');
+  if (req.method === 'OPTIONS') { res.writeHead(204); return res.end(); }
+
   const socketIp = (req.socket.remoteAddress || '0.0.0.0').replace(/^::ffff:/, '');
   // Effective client IP = the real client. In production that's the socket IP;
   // if an upstream/test already set X-Forwarded-For, honour its first value so a

@@ -21,6 +21,17 @@ app.set('trust proxy', true);
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
+// Permissive CORS so the flood/attack test tools can target this origin (or the
+// load balancer) from a page served on a different port. Lab-only convenience —
+// never do this on a real service.
+app.use((req, res, next) => {
+  res.set('Access-Control-Allow-Origin', '*');
+  res.set('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
+  res.set('Access-Control-Allow-Headers', 'Content-Type, X-Forwarded-For');
+  if (req.method === 'OPTIONS') return res.sendStatus(204);
+  next();
+});
+
 // ---------------------------------------------------------------------------
 // In-memory state
 // ---------------------------------------------------------------------------
