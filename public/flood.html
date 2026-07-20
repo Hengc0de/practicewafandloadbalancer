@@ -28,6 +28,8 @@
   <p>
     Target:
     <input type="text" id="targetUrl" value="http://localhost:6060" style="width:240px;background:#010409;color:#e6edf3;border:1px solid #30363d;border-radius:6px;padding:.2rem .5rem;font-family:monospace">
+    Path:
+    <input type="text" id="targetPath" value="/api/room/enter" style="width:160px;background:#010409;color:#e6edf3;border:1px solid #30363d;border-radius:6px;padding:.2rem .5rem;font-family:monospace">
   </p>
   <p>
     Concurrent requests:
@@ -46,7 +48,7 @@
 <div class="card log" id="log"></div>
 
 <div class="card">
-  <p class="muted">Enter the server URL above (default <code>http://localhost:6060</code>). Each request gets a fake IP via <code>X-Forwarded-For</code>. With 2 IP slots most get 503 — server overwhelmed. DP WAF detects the flood pattern and blocks at the edge.</p>
+  <p class="muted">Enter the server URL + path. Each request gets a fake IP via <code>X-Forwarded-For</code>. With 2 IP slots most get 503 — server overwhelmed. DP WAF detects the flood pattern and blocks at the edge.</p>
 </div>
 
 <script>
@@ -76,13 +78,14 @@ document.getElementById('startBtn').onclick = async () => {
   const concurrency = parseInt(document.getElementById('concurrency').value) || 10;
   const ipCount = parseInt(document.getElementById('ipCount').value) || 20;
   const target = document.getElementById('targetUrl').value.trim() || 'http://localhost:6060';
+  const path = document.getElementById('targetPath').value.trim() || '/api/room/enter';
 
-  log(`Flood: ${concurrency}x concurrency, ${ipCount} fake IPs → ${target}`);
+  log(`Flood: ${concurrency}x concurrency, ${ipCount} fake IPs → ${target}${path}`);
   let ok = 0, fail = 0, total = 0, startTime = Date.now();
 
   async function sendOne(ip) {
     try {
-      const res = await fetch(target + '/api/room/enter', {
+      const res = await fetch(target + path, {
         method: 'POST', headers: { 'X-Forwarded-For': ip, 'Content-Type': 'application/json' },
         signal: aborter.signal
       });
