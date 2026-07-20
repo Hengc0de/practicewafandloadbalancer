@@ -1,0 +1,435 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DP WAF & Load Balancer — NOC Training</title>
+<style>
+  :root{
+    --bg:#0d1117; --panel:#161b22; --border:#30363d; --text:#e6edf3; --muted:#8b949e;
+    --accent:#58a6ff; --danger:#f85149; --ok:#3fb950; --warn:#d29922;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--text);
+    font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;overflow:hidden}
+  #deck{height:100vh;width:100vw;position:relative}
+  .slide{position:absolute;inset:0;display:none;flex-direction:column;justify-content:center;
+    padding:5vh 8vw;animation:fade .35s ease}
+  .slide.active{display:flex}
+  @keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+  h1{font-size:clamp(2rem,5vw,3.6rem);line-height:1.05;margin:0 0 1rem}
+  h2{font-size:clamp(1.4rem,3.2vw,2.2rem);margin:0 0 1.2rem}
+  h1 .accent,h2 .accent{color:var(--accent)}
+  p,li{font-size:clamp(1rem,1.9vw,1.35rem);line-height:1.5}
+  ul{margin:.3rem 0 0;padding-left:1.4rem}
+  li{margin:.5rem 0}
+  .sub{color:var(--muted)}
+  .lead{font-size:clamp(1.1rem,2.4vw,1.6rem);color:var(--muted);max-width:60ch}
+  .kicker{color:var(--accent);font-weight:700;letter-spacing:.15em;text-transform:uppercase;
+    font-size:.8rem;margin-bottom:1rem}
+  .cols{display:grid;grid-template-columns:1fr 1fr;gap:2rem;align-items:start}
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:1.4rem 1.6rem}
+  .card h3{margin:.2rem 0 .6rem;font-size:1.2rem}
+  code,kbd{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+  code{background:#010409;border:1px solid var(--border);border-radius:6px;padding:.1em .4em;
+    color:var(--warn);font-size:.9em}
+  kbd{background:#21262d;border:1px solid var(--border);border-bottom-width:2px;border-radius:6px;
+    padding:.1em .5em;font-size:.85em}
+  pre{background:#010409;border:1px solid var(--border);border-radius:10px;padding:1rem 1.2rem;
+    overflow:auto;font-size:clamp(.8rem,1.5vw,1.05rem);line-height:1.45}
+  .badge{display:inline-block;font-size:.72rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
+    padding:.25rem .6rem;border-radius:999px;border:1px solid var(--border);color:var(--muted);vertical-align:middle}
+  .badge.demo{background:rgba(88,166,255,.15);border-color:var(--accent);color:#9ecbff}
+  .badge.danger{background:rgba(248,81,73,.14);border-color:var(--danger);color:#ffb4ae}
+  .badge.ok{background:rgba(63,185,80,.14);border-color:var(--ok);color:#a5e6b0}
+  .steps{counter-reset:s;list-style:none;padding:0;margin:.5rem 0 0}
+  .steps li{counter-increment:s;position:relative;padding-left:2.4rem;margin:.7rem 0}
+  .steps li::before{content:counter(s);position:absolute;left:0;top:-.1rem;width:1.7rem;height:1.7rem;
+    background:var(--accent);color:#0d1117;border-radius:50%;display:flex;align-items:center;
+    justify-content:center;font-weight:700;font-size:.95rem}
+  .pill{display:inline-flex;gap:.5rem;align-items:center;background:var(--panel);border:1px solid var(--border);
+    border-radius:999px;padding:.4rem .9rem;font-size:.95rem;margin:.3rem .4rem .3rem 0}
+  .big{font-size:clamp(2.4rem,7vw,5rem);font-weight:800;line-height:1}
+  .danger{color:var(--danger)} .ok{color:var(--ok)} .accentc{color:var(--accent)}
+  .center{align-items:center;text-align:center}
+  .flow{display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;font-size:clamp(.9rem,1.7vw,1.2rem)}
+  .flow .node{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:.6rem .9rem}
+  .flow .arw{color:var(--accent);font-weight:700}
+  /* chrome */
+  #bar{position:fixed;left:0;bottom:0;height:4px;background:var(--accent);width:0;transition:width .3s;z-index:5}
+  #hud{position:fixed;top:14px;right:18px;color:var(--muted);font-size:.85rem;z-index:5;
+    background:rgba(13,17,23,.6);padding:.2rem .6rem;border-radius:8px}
+  #nav{position:fixed;bottom:14px;right:18px;display:flex;gap:.4rem;z-index:5}
+  #nav button{background:var(--panel);color:var(--text);border:1px solid var(--border);border-radius:8px;
+    padding:.35rem .7rem;cursor:pointer;font-size:1rem}
+  #nav button:hover{border-color:var(--accent)}
+  #hint{position:fixed;bottom:14px;left:18px;color:var(--muted);font-size:.8rem;z-index:5}
+  #notes{position:fixed;left:0;right:0;bottom:0;max-height:42vh;overflow:auto;background:#05070a;
+    border-top:2px solid var(--accent);padding:1rem 1.4rem 1.4rem;z-index:8;display:none;
+    box-shadow:0 -12px 30px rgba(0,0,0,.5)}
+  #notes.show{display:block}
+  #notes h4{margin:.1rem 0 .5rem;color:var(--accent);font-size:.9rem;letter-spacing:.1em;text-transform:uppercase}
+  #notes .body{font-size:1.02rem;line-height:1.55;color:#cdd6e0;max-width:100ch}
+  #notes .body b{color:#fff}
+  #notes .meta{color:var(--muted);font-size:.85rem;margin-bottom:.4rem}
+  .logo{font-weight:800;letter-spacing:.5px}
+  .logo .accent{color:var(--accent)}
+  .foot{position:absolute;left:8vw;bottom:5vh;color:var(--muted);font-size:.85rem}
+</style>
+</head>
+<body>
+<div id="deck">
+
+  <!-- 1 TITLE -->
+  <section class="slide active center">
+    <div class="kicker">NOC Enablement · Hands-on Lab</div>
+    <h1><span class="accent">DP WAF</span> & Load Balancer<br>Security & Resilience Training</h1>
+    <p class="lead">Why we run a WAF and load balancing in front of our origins — and what it looks like when we don't.</p>
+    <div class="foot">Presenter: Leng BunHeng · For the NOC team</div>
+    <div class="notes"><div class="meta">⏱ ~1 min · Opening</div><div class="body">
+      Welcome the NOC team. Frame the session: this is <b>hands-on</b>, not slideware — we'll break a deliberately weak app live, then show how DP WAF stops it. Two halves: <b>WAF</b> (attacks on the app) and <b>Load Balancing / DDoS</b> (keeping the service up). <b>You (presenter) run the attack demos on screen</b>; the participants' one hands-on moment is the <b>capacity test</b> from their own devices later. Set expectation: ~45 min, interactive, ask questions anytime.
+    </div></div>
+  </section>
+
+  <!-- 2 AGENDA -->
+  <section class="slide">
+    <div class="kicker">Agenda</div>
+    <h2>What we'll cover</h2>
+    <div class="cols">
+      <div class="card">
+        <h3>Part 1 — Web attacks <span class="badge danger">attacks</span></h3>
+        <ul>
+          <li>SQL Injection — login bypass</li>
+          <li>Stored XSS → session theft → takeover</li>
+          <li>Broken Access Control — a design flaw demo</li>
+          <li>How DP WAF stops SQLi & XSS</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>Part 2 — Load Balancer <span class="badge ok">uptime</span></h3>
+        <ul>
+          <li>Why a single origin falls over</li>
+          <li>Live capacity wall (real HTTP 503)</li>
+          <li>DP WAF load balancing across origins</li>
+          <li>Per-IP DDoS protection</li>
+        </ul>
+      </div>
+    </div>
+    <div class="notes"><div class="meta">⏱ ~1 min</div><div class="body">
+      Roadmap. Emphasize the two operational angles NOC cares about: <b>security incidents</b> (Part 1) and <b>availability</b> (Part 2). Each part ends with a live demo. Mention there's a short quiz at the end. Tell them the whole lab is on <code>http://<host>:6060</code> and they'll follow along.
+    </div></div>
+  </section>
+
+  <!-- 3 WHY NOC -->
+  <section class="slide">
+    <div class="kicker">Why this matters to NOC</div>
+    <h2>You are the ones who see it first</h2>
+    <ul>
+      <li><b class="danger">Security:</b> the alert for a data breach or account takeover often starts as odd traffic on <em>your</em> dashboards.</li>
+      <li><b class="ok">Availability:</b> a "site is slow / down" ticket is frequently an <b>overloaded origin</b> or a <b>flood of traffic</b> — not a dead server.</li>
+      <li><b class="accentc">The fix lives at the edge:</b> a WAF + load balancer in front of the origins handles both, before the origin is ever touched.</li>
+    </ul>
+    <p class="sub">Today you'll see exactly what those failures look like from the inside.</p>
+    <div class="notes"><div class="meta">⏱ ~2 min · Make it relevant</div><div class="body">
+      Connect to their day job. Ask: "Who's taken a 3am page for a slow site?" The point: many "outages" are capacity or attack-driven, and the edge (WAF/LB) is the control plane that prevents them. This session builds intuition so they can <b>recognize the signatures</b> — 503 spikes, a single IP hammering, injection patterns in logs.
+    </div></div>
+  </section>
+
+  <!-- 4 WHAT IS WAF -->
+  <section class="slide">
+    <div class="kicker">Part 1 · Concept</div>
+    <h2>What is a <span class="accent">WAF</span>?</h2>
+    <div class="cols">
+      <div>
+        <ul>
+          <li>Sits <b>in front of</b> the web app — first line of defense.</li>
+          <li>Works at the <b>application layer</b> (HTTP/HTTPS).</li>
+          <li>Inspects each request — URL, headers, body — and <b>blocks malicious ones</b>.</li>
+          <li>Catches what a traditional network firewall <b>can't see</b>: SQLi, XSS, and friends.</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="flow" style="flex-direction:column;align-items:stretch">
+          <div class="node">👤 User / Attacker</div>
+          <div class="arw center">↓</div>
+          <div class="node" style="border-color:var(--accent)">🛡️ DP WAF — inspect & filter</div>
+          <div class="arw center">↓</div>
+          <div class="node">🖥️ Origin web app</div>
+        </div>
+      </div>
+    </div>
+    <div class="notes"><div class="meta">⏱ ~2 min</div><div class="body">
+      Keep it short — most of the deck is demos. Key contrast: a <b>network firewall</b> filters by IP/port (layers 3–4); it happily passes a valid HTTP request that contains an injection. A <b>WAF</b> reads the actual HTTP content (layer 7) and understands attack patterns. Analogy: network firewall = the building's door lock; WAF = the security guard reading what's in the envelope.
+    </div></div>
+  </section>
+
+  <!-- 5 THE LAB -->
+  <section class="slide">
+    <div class="kicker">The lab</div>
+    <h2>Your training environment</h2>
+    <p>Open <code>http://<host>:6060</code> — a deliberately <b class="danger">vulnerable-by-design</b> app. Two scenarios:</p>
+    <div class="cols">
+      <div class="card"><h3>🔓 Web attack chain</h3><p class="sub">Login → dashboard → feedback → attacker console. SQLi, stored XSS, plus a design flaw demo (cookie tampering — WAF doesn't catch that one).</p></div>
+      <div class="card"><h3>⚖️ Live capacity test</h3><p class="sub">Each origin serves only 2 IPs. Watch it fall over, then load-balance it.</p></div>
+    </div>
+    <p class="sub" style="margin-top:1rem">⚠ Vulnerable on purpose. Local, authorized training only — never expose it publicly.</p>
+    <div class="notes"><div class="meta">⏱ ~1 min · Set expectations</div><div class="body">
+      <b>You've already set the lab up.</b> The web-attack chain (next 3 slides) you'll demo <b>on the projector</b> — participants just watch. The <b>only</b> thing they do on their own devices is the capacity test (slide 11), so hand out that URL when you get there, not now. Give the real host IP later (run <code>ipconfig</code>, share the <code>192.168.x.x</code>). If someone opens it on the host machine itself they'll see IP <code>::1</code> — that's just localhost, and it won't count as a separate user in the capacity demo.
+    </div></div>
+  </section>
+
+  <!-- 6 SQLi -->
+  <section class="slide">
+    <div class="kicker">Part 1 · Attack 1 <span class="badge demo">live demo</span></div>
+    <h2>SQL Injection — login bypass</h2>
+    <div class="cols">
+      <div>
+        <p>The login builds its query by <b>gluing your input into SQL text</b>:</p>
+        <pre>SELECT * FROM users
+WHERE user = '<span class="danger">admin' --</span>' AND pass = ''</pre>
+        <p>The <code>--</code> comments out the password check. You're in as admin, no password.</p>
+      </div>
+      <div class="card">
+        <h3>Demo steps</h3>
+        <ol class="steps">
+          <li>Go to <code>/login.html</code></li>
+          <li>Username: <code>admin' --</code></li>
+          <li>Password: leave blank → Sign in</li>
+          <li>Show the returned <code>executedSql</code></li>
+        </ol>
+      </div>
+    </div>
+    <div class="notes"><div class="meta">⏱ ~3 min · DEMO (presenter on screen — participants watch)</div><div class="body">
+      Do it live. First log in normally as <code>guest/guest</code> to show it works. Then log in with <code>admin' --</code> and blank password → you're admin. Point at the <code>executedSql</code> field in the response so they see <b>how the input rewrote the query</b>. Teaching point: the DB did exactly what it was told — the bug is trusting user input as code. Mention the real fix is <b>parameterized queries</b>, but the edge fix is DP WAF spotting the injection pattern. Note: bare <code>' OR '1'='1</code> won't work here (the AND still applies) — you need the <code>--</code> comment. Good moment to explain precedence if the room is technical.
+    </div></div>
+  </section>
+
+  <!-- 7 BAC -->
+  <section class="slide">
+    <div class="kicker">Part 1 · Attack 2 <span class="badge demo">live demo</span></div>
+    <h2>Broken Access Control — edit your own cookie</h2>
+    <p class="sub" style="margin-bottom:1rem">⚠ This is a <b>design flaw</b>, not a request-level attack. A WAF can't catch it — the fix is in the backend code.</p>
+    <div class="cols">
+      <div>
+        <p>After login you get a role-based dashboard. The role lives in an <b>unsigned cookie</b> the server blindly trusts:</p>
+        <pre>dpwaf_session = base64({"user":"guest",
+                        "role":"<span class="danger">user</span>"})</pre>
+        <p>Change <code>user</code> → <code>administrator</code>, reload, and the <b class="danger">admin sidebar appears</b>.</p>
+      </div>
+      <div class="card">
+        <h3>Demo steps</h3>
+        <ol class="steps">
+          <li>Log in as <code>guest / guest</code></li>
+          <li>See the <b>standard-user</b> sidebar</li>
+          <li>DevTools → Application → Cookies</li>
+          <li>Paste the admin cookie (shown on the page)</li>
+          <li>Reload → <b>admin</b> dashboard + User Mgmt</li>
+        </ol>
+      </div>
+    </div>
+    <div class="notes"><div class="meta">⏱ ~3 min · DEMO (presenter on screen — participants watch)</div><div class="body">
+      Log in as <code>guest</code> first — show the limited menu (Dashboard/Profile/Tickets). Highlight the on-page "escalate yourself" panel with the click-to-copy admin cookie. Open DevTools live, swap the <code>dpwaf_session</code> value, reload — the Administration section, User Management table, and All Feedback panel appear. Teaching point for NOC: <b>never trust client-side state for authorization</b>. This is OWASP's #1 category (Broken Access Control). Crucially, this is a <b>backend design flaw</b> — a WAF can't stop it because the request looks perfectly normal. The lesson: WAF blocks injection attacks, but design flaws like unsigned sessions need code fixes. Tie it forward: this same cookie is what the XSS attack will steal next.
+    </div></div>
+  </section>
+
+  <!-- 8 XSS -->
+  <section class="slide">
+    <div class="kicker">Part 1 · Attack 3 <span class="badge demo">live demo</span></div>
+    <h2>Stored XSS → session theft → <span class="danger">takeover</span></h2>
+    <div class="flow" style="margin:.4rem 0 1rem">
+      <div class="node">Public feedback form</div><div class="arw">→</div>
+      <div class="node">Admin opens dashboard</div><div class="arw">→</div>
+      <div class="node">Payload steals cookie</div><div class="arw">→</div>
+      <div class="node danger">Attacker replays it</div>
+    </div>
+    <pre><script>new Image().src='/api/collect?c='+document.cookie</script></pre>
+    <p class="sub">A public form + an admin who just <em>views</em> the data = full account takeover. No password, no phishing.</p>
+    <div class="notes"><div class="meta">⏱ ~4 min · DEMO — the showpiece (presenter on screen — participants watch)</div><div class="body">
+      This is the "wow" moment; slow down. <b>1)</b> Open <code>/attacker.html</code> in one tab (the collector). <b>2)</b> On <code>/feedback.html</code>, submit the script payload (click a payload chip). <b>3)</b> Log in as admin (or forge the cookie) and open the dashboard — the "All Feedback" panel renders the payload unescaped, so it runs <b>in the admin's browser</b> and beacons the cookie out. <b>4)</b> Switch to the attacker console — the admin's cookie appears; click <b>Replay as admin</b> → "Account takeover confirmed." Key point: the admin did nothing but <b>look</b> at a page. This is how real breaches chain low-severity bugs into critical ones. Note: cookie is intentionally not HttpOnly so JS can read it — mention HttpOnly as a partial real-world mitigation, but the WAF blocks the payload outright.
+    </div></div>
+  </section>
+
+  <!-- 9 WAF fixes -->
+  <section class="slide center">
+    <div class="kicker">Part 1 · Payoff</div>
+    <h2>How <span class="accent">DP WAF</span> stops SQLi & XSS</h2>
+    <div class="cols" style="max-width:70vw">
+      <div class="card"><h3 class="danger">Without WAF</h3><ul>
+        <li>SQLi reaches the DB</li><li>XSS runs in admin's browser</li></ul></div>
+      <div class="card"><h3 class="ok">With DP WAF in front</h3><ul>
+        <li>Injection & script patterns detected in the request</li>
+        <li>Malicious request <b>blocked at the edge</b></li>
+        <li>Origin never even sees it</li></ul></div>
+    </div>
+    <p class="sub" style="margin-top:.6rem">Cookie tampering (BAC) is <b>not</b> WAF-blockable — it needs signed server-side sessions. WAF stops the attacks that deliver the payload, not the design flaws.</p>
+    <div class="notes"><div class="meta">⏱ ~2 min</div><div class="body">
+      Recap: WAF blocks SQLi and XSS by inspecting layer-7 content. Be honest — a WAF is <b>defense in depth</b>, not a substitute for fixing the code (parameterized queries, signed sessions, output encoding). BAC (cookie tampering) is a design flaw — the request is perfectly normal, so WAF can't detect it; that's a code fix. But when malicious payloads <em>are</em> present (SQLi, XSS), the WAF catches them at the edge across <b>all</b> apps. Transition: "Blocking attacks keeps you secure — but you also have to stay <b>up</b>. That's Part 2."
+    </div></div>
+  </section>
+
+  <!-- 10 What is LB -->
+  <section class="slide">
+    <div class="kicker">Part 2 · Concept</div>
+    <h2>What is <span class="accent">load balancing</span>?</h2>
+    <div class="cols">
+      <div>
+        <p>Spreading incoming traffic across <b>multiple origin servers</b> so no single one is overwhelmed.</p>
+        <p class="sub">With DP WAF you don't run your own — you give it your origin URLs and it balances for you.</p>
+        <p style="margin-top:1rem"><b>Algorithms:</b></p>
+        <div>
+          <span class="pill">Weighted Round Robin</span>
+          <span class="pill">Least Connections</span>
+          <span class="pill">IP Hash <span class="badge ok">sticky</span></span>
+        </div>
+      </div>
+      <div class="card">
+        <div class="flow" style="flex-direction:column;align-items:stretch">
+          <div class="node">Many users</div><div class="arw center">↓</div>
+          <div class="node" style="border-color:var(--accent)">⚖️ DP WAF load balancer</div>
+          <div class="arw center">↓  ↓  ↓</div>
+          <div class="flow"><div class="node">origin-1</div><div class="node">origin-2</div><div class="node">origin-3</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="notes"><div class="meta">⏱ ~2 min</div><div class="body">
+      Quick concept. Explain the three algorithms in one line each: <b>Weighted RR</b> — bigger servers get more; <b>Least Conn</b> — send to the least busy; <b>IP Hash</b> — same client always lands on the same origin (sticky sessions). We'll use <b>IP Hash</b> in the demo. Reinforce DP WAF's model from the product: "you give us origin URLs, we balance" — no extra infra for the team to run.
+    </div></div>
+  </section>
+
+  <!-- 11 Capacity phase 1 -->
+  <section class="slide">
+    <div class="kicker">Part 2 · Demo — Phase 1 <span class="badge demo">live demo</span></div>
+    <h2>One origin hits the wall</h2>
+    <div class="cols">
+      <div>
+        <p>Our origin serves only <b>2 distinct client IPs</b> at once (stand-in for real capacity limits).</p>
+        <p>Everyone opens <code>/capacity.html</code> from their <b>own device</b>. The 3rd person sees:</p>
+        <p class="big danger">HTTP 503</p>
+        <p class="sub">A real overload — their own IP, rejected. Not a simulation.</p>
+      </div>
+      <div class="card">
+        <h3>Run it</h3>
+        <ol class="steps">
+          <li>Everyone opens <code>http://<host>:6060/capacity.html</code></li>
+          <li>First 2 IPs: <b class="ok">✅ connected</b></li>
+          <li>3rd+ IPs: <b class="danger">❌ 503 overloaded</b></li>
+        </ol>
+        <p class="sub">Note the <b>“Served by origin”</b> field.</p>
+      </div>
+    </div>
+    <div class="notes"><div class="meta">⏱ ~4 min · DEMO — the ONE participant hands-on moment</div><div class="body">
+      <b>This is the only slide where participants touch the lab.</b> Now hand out the URL: <code>http://<host>:6060/capacity.html</code> (share the IP / a QR). This needs multiple <b>real IPs</b>, so they must use their own devices over the LAN (not localhost). Have three people open the page in sequence — the 3rd gets the red 503 with their own IP. If you're solo or Wi-Fi is flaky, fall back to <code>/capacity-simulated.html</code> (A/B/C picker fakes distinct IPs). Explain the 2-IP cap is a deliberately tiny stand-in for a real server's connection/CPU limit. Callout: people behind the same NAT can share an IP — that's why IP Hash matters and a good segue to Phase 2.
+    </div></div>
+  </section>
+
+  <!-- 12 Capacity phase 2 -->
+  <section class="slide">
+    <div class="kicker">Part 2 · Demo — Phase 2 <span class="badge demo">live demo</span></div>
+    <h2 class="ok">Put DP WAF in front → everyone's back in</h2>
+    <div class="cols">
+      <div>
+        <p>Run several identical origins and balance across them:</p>
+        <pre>npm run origin1   # :6061
+npm run origin2   # :6062
+npm run origin3   # :6063
+npm run lb        # :6060 → spreads (IP Hash)</pre>
+        <p>Now <b>up to 6 IPs</b> get in — and <b>“Served by origin”</b> shows the spread.</p>
+      </div>
+      <div class="card">
+        <h3>In real life</h3>
+        <p>Skip <code>lb.js</code> — in DP WAF, add the three origin URLs and choose <b>IP Hash</b>. Same result, no infra to run.</p>
+        <p class="sub">Capacity scaled horizontally; the wall is gone.</p>
+      </div>
+    </div>
+    <div class="notes"><div class="meta">⏱ ~4 min · DEMO</div><div class="body">
+      Start the three origins + the balancer beforehand (or have terminals ready). Have the person who got the 503 reload — now they connect, and their "Served by origin" shows e.g. <code>origin-2</code> while someone else shows <code>origin-1</code>. That visible difference <b>is</b> the load balancing. Tie it to DP WAF: in production you just register origin URLs and pick the algorithm. Message for NOC: horizontal scale + health-aware routing = the standard answer to capacity and to soaking up traffic spikes.
+    </div></div>
+  </section>
+
+  <!-- 13 DDoS -->
+  <section class="slide">
+    <div class="kicker">Part 2 · Concept</div>
+    <h2>DDoS protection — per-IP awareness</h2>
+    <ul>
+      <li>A <b>DDoS</b> floods the service from many machines (a botnet) to exhaust resources.</li>
+      <li>DP WAF runs a <b>log analyzer</b> watching for flood patterns per IP, continuously.</li>
+      <li>Abusive IPs go on a <b>block list</b>; FortiGate drops their traffic before it reaches the origin.</li>
+      <li>Load balancing spreads legitimate load; per-IP blocking removes the abusive load.</li>
+    </ul>
+    <p class="sub">This is exactly the <b>IP-awareness</b> you saw in the capacity demo, applied defensively.</p>
+    <div class="notes"><div class="meta">⏱ ~2 min</div><div class="body">
+      Connect the dots: the same "count by IP" logic that limited capacity is what powers DDoS defense — identify the noisy IPs, drop them. Two layers working together: <b>load balancer</b> spreads the good traffic, <b>per-IP block list + FortiGate</b> removes the bad. For NOC: this is what turns a "site down under attack" page into a non-event. Mention what they'd see on dashboards: a spike from a narrow set of IPs that then flatlines once blocked.
+    </div></div>
+  </section>
+
+  <!-- 14 Takeaways -->
+  <section class="slide">
+    <div class="kicker">Wrap-up</div>
+    <h2>Takeaways for NOC</h2>
+    <ul>
+      <li>🛡️ <b>WAF = layer-7 guard.</b> Blocks SQLi/XSS/injection patterns the network firewall can't see.</li>
+      <li>🔑 <b>Signed sessions, not cookie roles.</b> BAC (cookie tampering) is a backend design flaw — WAF can't fix it. Always validate server-side.</li>
+      <li>⚖️ <b>Load balancing = availability.</b> Horizontal scale removes the single-origin wall.</li>
+      <li>🚧 <b>Per-IP control = DDoS defense.</b> Spread the good, drop the bad, at the edge.</li>
+      <li>👀 <b>You're the first responders.</b> Now you know the signatures: 503 spikes, single-IP floods, injection strings in logs.</li>
+    </ul>
+    <div class="notes"><div class="meta">⏱ ~2 min</div><div class="body">
+      Land the plane. Repeat the one-liner: <b>the edge (WAF + LB) is where both security and availability are enforced, before the origin.</b> Encourage them to keep the lab and replay it. Invite questions before the quiz.
+    </div></div>
+  </section>
+
+  <!-- 15 Quiz / QA -->
+  <section class="slide center">
+    <div class="kicker">Check & discuss</div>
+    <h2>Quick quiz</h2>
+    <ul style="text-align:left;max-width:60ch">
+      <li>Why can a network firewall miss a SQL injection but a WAF catch it?</li>
+      <li>The admin only <em>viewed</em> a page — how did the attacker get their session?</li>
+      <li>Two users behind one office router share a public IP. Which LB algorithm keeps them sticky, and why does the per-IP cap matter?</li>
+      <li>You see a burst of HTTP 503 plus one IP at 90% of requests. What's your call?</li>
+    </ul>
+    <p class="lead accentc" style="margin-top:1.4rem">Questions?</p>
+    <div class="foot">Thank you · Leng BunHeng</div>
+    <div class="notes"><div class="meta">⏱ ~4 min · Discussion</div><div class="body">
+      Use these to check understanding. Answers: <b>1)</b> firewall works at L3/4 (IP/port), the injection rides inside a valid HTTP request — only a L7 WAF reads the payload. <b>2)</b> stored XSS ran in the admin's browser and exfiltrated the non-HttpOnly cookie, which the attacker replayed. <b>3)</b> IP Hash (sticky) so their sessions are consistent; the per-IP cap/blocking is why shared-NAT and DDoS need care. <b>4)</b> likely a DDoS from that IP — block/rate-limit it at the edge, confirm origins healthy, watch the 503s clear. Thank them; point to README for self-study.
+    </div></div>
+  </section>
+
+</div>
+
+<div id="bar"></div>
+<div id="hud">1 / 15</div>
+<div id="hint">← → navigate · <kbd>S</kbd> speaker notes · <kbd>F</kbd> fullscreen</div>
+<div id="nav"><button onclick="go(-1)">‹</button><button onclick="go(1)">›</button></div>
+<div id="notes"><h4>Speaker notes</h4><div class="content"></div></div>
+
+<script>
+  const slides = Array.from(document.querySelectorAll('.slide'));
+  const hud = document.getElementById('hud');
+  const bar = document.getElementById('bar');
+  const notes = document.getElementById('notes');
+  const notesBody = notes.querySelector('.content');
+  let i = 0;
+
+  function render(){
+    slides.forEach((s,n)=>s.classList.toggle('active', n===i));
+    hud.textContent = (i+1)+' / '+slides.length;
+    bar.style.width = ((i+1)/slides.length*100)+'%';
+    const note = slides[i].querySelector('.notes');
+    notesBody.innerHTML = note ? note.innerHTML : '<div class="body">—</div>';
+  }
+  function go(d){ i = Math.max(0, Math.min(slides.length-1, i+d)); render(); }
+  function toggleNotes(){ notes.classList.toggle('show'); }
+
+  document.addEventListener('keydown', e=>{
+    if(e.key==='ArrowRight'||e.key==='PageDown'||e.key===' '){ e.preventDefault(); go(1); }
+    else if(e.key==='ArrowLeft'||e.key==='PageUp'){ e.preventDefault(); go(-1); }
+    else if(e.key==='Home'){ i=0; render(); }
+    else if(e.key==='End'){ i=slides.length-1; render(); }
+    else if(e.key.toLowerCase()==='s'){ toggleNotes(); }
+    else if(e.key.toLowerCase()==='f'){ if(!document.fullscreenElement) document.documentElement.requestFullscreen(); else document.exitFullscreen(); }
+  });
+  render();
+</script>
+</body>
+</html>

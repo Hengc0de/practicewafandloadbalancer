@@ -20,10 +20,11 @@ participants do themselves is the capacity test on slide 11.
 
 ### Slide 2 — Agenda
 > "Two halves today. First half: I'll attack a website three different ways — stealing a
-> login, breaking into an admin account, and stealing someone's session — and show what a WAF
-> does about each one. Second half: we'll watch a website crash because too many people try to
-> use it at once, and then fix it with load balancing. At the very end there's a few quick
-> questions to check we're all on the same page."
+> login, stealing someone's session, and also show a design flaw where the server trusts the
+> browser too much — and show what a WAF can and can't do about each one. Second half: we'll
+> watch a website crash because too many people try to use it at once, and then fix it with
+> load balancing. At the very end there's a few quick questions to check we're all on the
+> same page."
 
 ---
 
@@ -74,18 +75,22 @@ participants do themselves is the capacity test on slide 11.
 ---
 
 ### Slide 7 — Broken Access Control (cookie tampering)
-> "Second attack. When you log into a website, your browser gets a small file called a cookie
-> that says who you are. I'm going to log in as a completely normal, low-permission user — watch,
-> I only see a basic menu, nothing special.
+> "Second demo — different kind of problem. When you log into a website, your browser gets a
+> small file called a cookie that says who you are. I'm going to log in as a completely normal,
+> low-permission user — watch, I only see a basic menu, nothing special.
 >
 > Now here's the problem: this app stores 'who am I' directly inside that cookie, and it never
 > checks if I'm lying. So I'm going to open my browser's developer tools, find that cookie, and
 > just... change the word 'user' to 'administrator.' Reload the page — and now I have the full
 > admin menu. User management, all the settings, everything.
 >
-> I didn't hack any password. I just told the website 'trust me, I'm the admin' and it did. The
-> lesson here: never let the browser decide who someone is — the server has to verify that every
-> time, because anything sitting in your browser can be edited by the person using it."
+> I didn't hack any password. I just told the website 'trust me, I'm the admin' and it did.
+>
+> **Now, important point about WAF:** a WAF couldn't stop this one. The request looks perfectly
+> normal — it's a regular page load with a cookie. The problem is the backend trusts the cookie
+> without checking. This isn't a request-level attack we can filter; it's a code design flaw.
+> The fix is signed server-side sessions, and that's the lesson — WAF blocks injection attacks,
+> but design flaws need code fixes."
 
 ---
 
@@ -109,12 +114,17 @@ participants do themselves is the capacity test on slide 11.
 
 ---
 
-### Slide 9 — How DP WAF stops all three
-> "So three different attacks, three different tricks — but notice the pattern: every single one
-> of them was just a request that looked a little bit 'off.' A weird bit of text in a login box.
-> A tampered cookie. Hidden code inside a message. A WAF's whole job is reading every request
-> that comes in and recognizing 'this looks off' — and blocking it right there, before it ever
-> reaches our actual website. The server never even finds out an attack was attempted.
+### Slide 9 — How DP WAF stops the attacks it can
+> "So three demos, but two different categories. The SQL injection and the stored XSS — those
+> have weird content inside the request. A weird bit of text in a login box, hidden code inside
+> a message. A WAF reads every request and recognizes 'this looks off' — and blocks it right
+> there, before it ever reaches our actual website.
+>
+> The cookie tampering one is different. That request looks completely normal to a WAF — there's
+> nothing suspicious in the HTTP content. That's a design flaw in the backend code, and you need
+> to fix the code, not add more filtering. But notice how the attacks chain together: the XSS is
+> what *steals* the cookie. So even though the WAF can't fix the design flaw, it can still block
+> the attack that would exploit it.
 >
 > To be clear — a WAF isn't magic, and it doesn't replace fixing the code properly. But it's a
 > single checkpoint that catches known bad patterns instantly, for every app behind it, all the
@@ -182,11 +192,11 @@ participants do themselves is the capacity test on slide 11.
 ### Slide 14 — Takeaways
 > "So here's everything in five points, plain and simple:
 > - A WAF reads every request in detail and blocks the ones that look like an attack.
-> - Never trust anything the browser tells you about who someone is — always check on the
->   server side.
+> - Cookie tampering (broken access control) is a design flaw — WAF can't fix it. Always
+>   use signed sessions and validate roles server-side.
 > - Load balancing spreads traffic across multiple servers so one overloaded server doesn't take
 >   the whole site down.
-> - Blocking bad addresses stops intentional flood attacks.
+> - Per-IP blocking stops intentional flood attacks (DDoS).
 > - And you all, in NOC, are usually the first to see the warning signs — now you know what
 >   those warning signs actually look like from the inside."
 
