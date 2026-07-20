@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>DDoS flood test — DP WAF lab</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  *{box-sizing:border-box}
+  body{background:#0d1117;color:#e6edf3;font-family:system-ui,sans-serif;padding:2rem;max-width:700px;margin:0 auto}
+  h1{color:#58a6ff;font-size:1.5rem}
+  .card{background:#161b22;border:1px solid #30363d;border-radius:12px;padding:1.2rem;margin:1rem 0}
+  button{padding:.5rem 1rem;border-radius:8px;border:1px solid #30363d;cursor:pointer;font-size:.95rem}
+  .btn-danger{background:#f85149;color:#fff;border-color:#f85149}
+  .btn-ok{background:#238636;color:#fff}
+  code{background:#010409;border:1px solid #30363d;border-radius:6px;padding:.1em .4em;color:#d29922}
+  .log{max-height:400px;overflow:auto;font-family:monospace;font-size:.85rem;line-height:1.4}
+  .log div{padding:2px 0;border-bottom:1px solid #21262d}
+  .ok{color:#3fb950}
+  .err{color:#f85149}
+  .muted{color:#8b949e}
+</style>
+</head>
+<body>
+<h1>DDoS flood test</h1>
+<p class="muted">Simulate a flood from many fake IPs. Watch the origin get overwhelmed. DP WAF per-IP blocking stops this at the edge.</p>
+
+<div class="card">
+  <p>
+    Concurrent requests:
+    <input type="number" id="concurrency" value="10" min="1" max="100" style="width:60px;background:#010409;color:#e6edf3;border:1px solid #30363d;border-radius:6px;padding:.2rem .5rem">
+    Fake IPs:
+    <input type="number" id="ipCount" value="20" min="1" max="200" style="width:60px;background:#010409;color:#e6edf3;border:1px solid #30363d;border-radius:6px;padding:.2rem .5rem">
+  </p>
+  <p>
+    <button class="btn-danger" id="startBtn">Start flood</button>
+    <button class="btn-ok" id="stopBtn" disabled>Stop</button>
+    <button id="clearBtn">Clear log</button>
+  </p>
+  <div id="summary" class="muted">Ready.</div>
+</div>
+
+<div class="card log" id="log"></div>
+
+<div class="card">
+  <p class="muted">Each request uses a different fake IP via <code>X-Forwarded-For</code>. With 2 IP slots most requests get 503 — server overwhelmed. DP WAF detects the flood pattern and blocks at the edge.</p>
+</div>
+
+<script>
+const logEl = document.getElementById('log');
+const summaryEl = document.getElementById('summary');
+let running = false;
+let aborter = null;
+
+function log(msg, cls='') {
+  const d = document.createElement('div'); d.className = cls; d.textContent = msg;
+  logEl.appendChild(d); logEl.scrollTop = logEl.scrollHeight;
+}
+
+document.getElementById('clearBtn').onclick = () => { logEl.innerHTML = ''; summaryEl.textContent = 'Ready.'; };
+
+function randomIp() {
+  return `${Math.floor(Math.random()*256)}.${Math.floor(Math.random()*256)}.${Math.floor(Math.random()*256)}.${Math.floor(Math.random()*256)}`;
+}
+
+document.getElementById('startBtn').onclick = async () => {
+  if (running) return;
+  running = true;
+  document.getElementById('startBtn').disabled = true;
+  document.getElementById('stopBtn').disabled = false;
+  aborter = new AbortController();
+
+  const concurrency = parseInt(document.getElementById('concurrency').value) || 10;
+  const ipCount = parseInt(document.getElementById('ipCount').value) || 20;
+  const target = 'http://localhost:6060';
+
+  log(`Flood: ${concurrency}x concurrency, ${ipCount} fake IPs`);
+  let ok = 0, fail = 0, total = 0, startTime = Date.now();
+
+  async function sendOne(ip) {
+    try {
+      const res = await fetch(target + '/api/room/enter', {
+        method: 'POST', headers: { 'X-Forwarded-For': ip, 'Content-Type': 'application/json' },
+        signal: aborter.signal
+      });
+      return res.ok ? 'ok' : 'fail';
+    } catch (e) {
+      return e.name === 'AbortError' ? null : 'fail';
+    }
+  }
+
+  while (running) {
+    const ips = Array.from({length: concurrency}, () => randomIp());
+    const results = await Promise.all(ips.map(sendOne));
+    total += concurrency;
+    results.forEach(r => { if (r === 'ok') ok++; else if (r === 'fail') fail++; });
+    const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+    summaryEl.textContent = `${elapsed}s | Ok: ${ok} | Failed: ${fail} | Total: ${total}`;
+    if (ok + fail >= ipCount * 3) break;
+    await new Promise(r => setTimeout(r, 200));
+  }
+  log(`Done. ${ok} accepted, ${fail} rejected.`, ok > fail ? 'ok' : 'err');
+  running = false;
+  document.getElementById('startBtn').disabled = false;
+  document.getElementById('stopBtn').disabled = true;
+};
+
+document.getElementById('stopBtn').onclick = () => {
+  running = false;
+  document.getElementById('startBtn').disabled = false;
+  document.getElementById('stopBtn').disabled = true;
+  if (aborter) aborter.abort();
+};
+</script>
+</body>
+</html>

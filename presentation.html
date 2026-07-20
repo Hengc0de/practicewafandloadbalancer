@@ -72,6 +72,7 @@
   #notes .body{font-size:1.02rem;line-height:1.55;color:#cdd6e0;max-width:100ch}
   #notes .body b{color:#fff}
   #notes .meta{color:var(--muted);font-size:.85rem;margin-bottom:.4rem}
+  .slide-num{position:absolute;top:5vh;right:8vw;font-size:.75rem;color:var(--muted);letter-spacing:.08em}
   .logo{font-weight:800;letter-spacing:.5px}
   .logo .accent{color:var(--accent)}
   .foot{position:absolute;left:8vw;bottom:5vh;color:var(--muted);font-size:.85rem}
@@ -82,6 +83,7 @@
 
   <!-- 1 TITLE -->
   <section class="slide active center">
+    <div class="slide-num">1 / 14</div>
     <div class="kicker">NOC Enablement · Hands-on Lab</div>
     <h1><span class="accent">DP WAF</span> & Load Balancer<br>Security & Resilience Training</h1>
     <p class="lead">Why we run a WAF and load balancing in front of our origins — and what it looks like when we don't.</p>
@@ -93,6 +95,7 @@
 
   <!-- 2 AGENDA -->
   <section class="slide">
+    <div class="slide-num">2 / 14</div>
     <div class="kicker">Agenda</div>
     <h2>What we'll cover</h2>
     <div class="cols">
@@ -121,6 +124,7 @@
 
   <!-- 3 WHY NOC -->
   <section class="slide">
+    <div class="slide-num">3 / 14</div>
     <div class="kicker">Why this matters to NOC</div>
     <h2>You are the ones who see it first</h2>
     <ul>
@@ -136,6 +140,7 @@
 
   <!-- 4 WHAT IS WAF -->
   <section class="slide">
+    <div class="slide-num">4 / 14</div>
     <div class="kicker">Part 1 · Concept</div>
     <h2>What is a <span class="accent">WAF</span>?</h2>
     <div class="cols">
@@ -164,6 +169,7 @@
 
   <!-- 5 THE LAB -->
   <section class="slide">
+    <div class="slide-num">5 / 14</div>
     <div class="kicker">The lab</div>
     <h2>Your training environment</h2>
     <p>Open <code>http://<host>:6060</code> — a deliberately <b class="danger">vulnerable-by-design</b> app. Two scenarios:</p>
@@ -179,6 +185,7 @@
 
   <!-- 6 SQLi -->
   <section class="slide">
+    <div class="slide-num">6 / 14</div>
     <div class="kicker">Part 1 · Attack 1 <span class="badge demo">live demo</span></div>
     <h2>SQL Injection — login bypass</h2>
     <div class="cols">
@@ -205,6 +212,7 @@ WHERE user = '<span class="danger">admin' --</span>' AND pass = ''</pre>
 
   <!-- 7 XSS -->
   <section class="slide">
+    <div class="slide-num">7 / 14</div>
     <div class="kicker">Part 1 · Attack 2 <span class="badge demo">live demo</span></div>
     <h2>Stored XSS → session theft → <span class="danger">takeover</span></h2>
     <div class="flow" style="margin:.4rem 0 1rem">
@@ -220,8 +228,9 @@ WHERE user = '<span class="danger">admin' --</span>' AND pass = ''</pre>
     </div></div>
   </section>
 
-  <!-- 9 WAF fixes -->
+  <!-- 8 WAF fixes -->
   <section class="slide center">
+    <div class="slide-num">8 / 14</div>
     <div class="kicker">Part 1 · Payoff</div>
     <h2>How <span class="accent">DP WAF</span> stops SQLi & XSS</h2>
     <div class="cols" style="max-width:70vw">
@@ -237,8 +246,9 @@ WHERE user = '<span class="danger">admin' --</span>' AND pass = ''</pre>
     </div></div>
   </section>
 
-  <!-- 10 What is LB -->
+  <!-- 9 What is LB -->
   <section class="slide">
+    <div class="slide-num">9 / 14</div>
     <div class="kicker">Part 2 · Concept</div>
     <h2>What is <span class="accent">load balancing</span>?</h2>
     <div class="cols">
@@ -266,8 +276,9 @@ WHERE user = '<span class="danger">admin' --</span>' AND pass = ''</pre>
     </div></div>
   </section>
 
-  <!-- 11 Capacity phase 1 -->
+  <!-- 10 Capacity phase 1 -->
   <section class="slide">
+    <div class="slide-num">10 / 14</div>
     <div class="kicker">Part 2 · Demo — Phase 1 <span class="badge demo">live demo</span></div>
     <h2>One origin hits the wall</h2>
     <div class="cols">
@@ -292,32 +303,33 @@ WHERE user = '<span class="danger">admin' --</span>' AND pass = ''</pre>
     </div></div>
   </section>
 
-  <!-- 12 Capacity phase 2 -->
+  <!-- 11 Capacity phase 2 -->
   <section class="slide">
+    <div class="slide-num">11 / 14</div>
     <div class="kicker">Part 2 · Demo — Phase 2 <span class="badge demo">live demo</span></div>
     <h2 class="ok">Put DP WAF in front → everyone's back in</h2>
     <div class="cols">
       <div>
-        <p>Run several identical origins and balance across them:</p>
+        <p>Run several identical origins and put DP WAF in front:</p>
         <pre>npm run origin1   # :6061
 npm run origin2   # :6062
 npm run origin3   # :6063
-npm run lb        # :6060 → spreads (IP Hash)</pre>
+# DP WAF balances across all three</pre>
         <p>Now <b>up to 6 IPs</b> get in — and <b>“Served by origin”</b> shows the spread.</p>
       </div>
       <div class="card">
-        <h3>In real life</h3>
-        <p>Skip <code>lb.js</code> — in DP WAF, add the three origin URLs and choose <b>IP Hash</b>. Same result, no infra to run.</p>
-        <p class="sub">Capacity scaled horizontally; the wall is gone.</p>
+        <h3>How it works</h3>
+        <p>In DP WAF, register the three origin URLs and choose <b>IP Hash</b>. Capacity scales horizontally; the wall is gone.</p>
       </div>
     </div>
     <div class="notes"><div class="meta">⏱ ~4 min · DEMO</div><div class="body">
-      Start the three origins + the balancer beforehand (or have terminals ready). Have the person who got the 503 reload — now they connect, and their "Served by origin" shows e.g. <code>origin-2</code> while someone else shows <code>origin-1</code>. That visible difference <b>is</b> the load balancing. Tie it to DP WAF: in production you just register origin URLs and pick the algorithm. Message for NOC: horizontal scale + health-aware routing = the standard answer to capacity and to soaking up traffic spikes.
+      Have the person who got the 503 reload — now they connect, and "Served by origin" shows e.g. <code>origin-2</code> while someone else shows <code>origin-1</code>. That visible difference <b>is</b> load balancing. In production you just register origin URLs in DP WAF and pick the algorithm. Message for NOC: horizontal scale = the answer to capacity spikes.
     </div></div>
   </section>
 
-  <!-- 13 DDoS -->
+  <!-- 12 DDoS -->
   <section class="slide">
+    <div class="slide-num">12 / 14</div>
     <div class="kicker">Part 2 · Concept</div>
     <h2>DDoS protection — per-IP awareness</h2>
     <ul>
@@ -332,8 +344,9 @@ npm run lb        # :6060 → spreads (IP Hash)</pre>
     </div></div>
   </section>
 
-  <!-- 14 Takeaways -->
+  <!-- 13 Takeaways -->
   <section class="slide">
+    <div class="slide-num">13 / 14</div>
     <div class="kicker">Wrap-up</div>
     <h2>Takeaways for NOC</h2>
     <ul>
@@ -347,8 +360,9 @@ npm run lb        # :6060 → spreads (IP Hash)</pre>
     </div></div>
   </section>
 
-  <!-- 15 Quiz / QA -->
+  <!-- 14 Quiz / QA -->
   <section class="slide center">
+    <div class="slide-num">14 / 14</div>
     <div class="kicker">Check & discuss</div>
     <h2>Quick quiz</h2>
     <ul style="text-align:left;max-width:60ch">
