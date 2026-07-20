@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Admin login — DP WAF lab</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header>
+    <div class="logo"><span>DP</span> WAF — Admin Login</div>
+  </header>
+  <main>
+    <nav><a href="index.html">← lab</a> · step 2 of 3</nav>
+    <div class="banner">⚠ Vulnerable by design. This login builds its SQL query by string concatenation — it is SQL-injectable.</div>
+
+    <div class="panel login-card">
+      <h2>Sign in</h2>
+      <p class="sub">Standard user: <code>guest</code> / <code>guest</code> · Admin: <code>admin</code> / <code>secret</code>.
+        Or bypass the password entirely with an injection. You land on a role-based dashboard.</p>
+      <label>Username</label>
+      <input type="text" id="username" placeholder="admin" autocomplete="off">
+      <label>Password</label>
+      <input type="password" id="password" placeholder="••••••" autocomplete="off">
+
+      <div class="payloads">
+        <p class="sub" style="margin-bottom:.25rem">SQLi payloads (click to fill username, leave password blank):</p>
+        <code onclick="fillUser(this)">admin' --</code>
+        <code onclick="fillUser(this)">' OR 1=1 --</code>
+      </div>
+
+      <div class="row"><button onclick="doLogin()">Sign in</button></div>
+      <pre id="loginOut" class="muted">Response will appear here…</pre>
+      <p class="sub">Log in as <b>guest</b> to see the standard-user dashboard, then edit your
+        <code>dpwaf_session</code> cookie in DevTools to escalate to the admin dashboard.</p>
+    </div>
+  </main>
+  <footer>DP WAF training lab · vulnerable by design</footer>
+  <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Attacker console — DP WAF lab</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header>
+    <div class="logo"><span>DP</span> WAF — Attacker Console <span class="tag">simulated</span></div>
+  </header>
+  <main>
+    <nav><a href="index.html">← lab</a> · step 3 of 3</nav>
+    <div class="banner">This is the attacker's collector. When the admin views the poisoned
+      feedback, their browser beacons the session cookie here. Leave this open and watch.</div>
+
+    <div class="panel">
+      <h2>Captured beacons <span class="muted" id="count">(0)</span></h2>
+      <table class="ftable">
+        <thead><tr><th>Time</th><th>From IP</th><th>Stolen data (document.cookie)</th></tr></thead>
+        <tbody id="loot"><tr><td colspan="3" class="muted">Waiting for the admin to open a poisoned feedback page…</td></tr></tbody>
+      </table>
+    </div>
+
+    <div class="panel">
+      <h2>Weaponize a stolen token</h2>
+      <p class="sub">Paste a captured cookie (or click one above) and replay it — proving the token grants admin access.</p>
+      <input type="text" id="stolen" placeholder="dpwaf_session=tok_..." autocomplete="off">
+      <div class="row"><button onclick="replay()">Replay as admin</button></div>
+      <pre id="replayOut" class="muted">Response will appear here…</pre>
+    </div>
+  </main>
+  <footer>DP WAF training lab · simulated attacker</footer>
+  <script src="app.js"></script>
+</body>
+</html>

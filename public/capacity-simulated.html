@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Capacity (simulated IPs) — DP WAF lab</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header>
+    <div class="logo"><span>DP</span> WAF — Capacity (simulated IPs)</div>
+  </header>
+  <main>
+    <nav><a href="index.html">← lab</a> · <a href="capacity.html">real-IP version →</a></nav>
+    <div class="banner">
+      <b>Concept / single-machine version.</b> This single origin serves only
+      <b>2 distinct IP addresses</b> at once (IP-aware). Act as different users below — each
+      button sends a different simulated <code>X-Forwarded-For</code> IP so one laptop can
+      play three clients. For a live class where participants use their own devices, use the
+      <a href="capacity.html">real-IP version</a>.
+    </div>
+
+    <div class="panel">
+      <h2>Act as user</h2>
+      <p class="sub">Each button sends a different <code>X-Forwarded-For</code> IP, so one laptop can simulate three clients.</p>
+      <div class="ippick" id="ippick"></div>
+      <div class="row">
+        <button onclick="enterRoom()">Enter as selected user</button>
+        <button class="ghost" onclick="leaveRoom()">Leave as selected user</button>
+      </div>
+      <pre id="roomOut" class="muted">Response will appear here…</pre>
+    </div>
+
+    <div class="panel">
+      <h2>Origin capacity <span class="muted" id="cap">(0 / 2 IPs)</span></h2>
+      <div id="slots" class="slots"></div>
+      <p class="sub">
+        Try: enter as <b>User A</b> and <b>User B</b> → 2/2 full. Enter as <b>User C</b> → 503.
+        Enter as <b>User A</b> again → still 1 slot (IP-aware: same IP doesn't double-count).
+      </p>
+      <p class="sub">
+        ✓ How DP WAF fixes this: load-balance across multiple origins (Weighted Round Robin,
+        Least Conn, IP Hash) so capacity scales, while per-IP DDoS control drops abusive IPs.
+      </p>
+    </div>
+  </main>
+  <footer>DP WAF training lab · load balancing demo (simulated)</footer>
+  <script src="app.js"></script>
+</body>
+</html>

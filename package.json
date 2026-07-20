@@ -1,0 +1,17 @@
+{
+  "name": "dp-waf-training-site",
+  "version": "1.0.0",
+  "description": "DP WAF & Load Balancer practical training site — two intentionally weak origin apps (vulnerable-by-design, local training only).",
+  "type": "commonjs",
+  "main": "server.js",
+  "scripts": {
+    "start": "node --experimental-sqlite server.js",
+    "origin1": "set PORT=6061&& set INSTANCE_ID=origin-1&& node --experimental-sqlite server.js",
+    "origin2": "set PORT=6062&& set INSTANCE_ID=origin-2&& node --experimental-sqlite server.js",
+    "origin3": "set PORT=6063&& set INSTANCE_ID=origin-3&& node --experimental-sqlite server.js",
+    "lb": "node lb.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2"
+  }
+}

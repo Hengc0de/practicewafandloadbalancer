@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Live capacity — DP WAF lab</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header>
+    <div class="logo"><span>DP</span> WAF — Live Capacity Test</div>
+  </header>
+  <main>
+    <nav><a href="index.html">← lab</a> · <a href="capacity-simulated.html">simulated-IP version →</a></nav>
+
+    <div id="live" class="live pending">
+      <div class="live-icon" id="liveIcon">⏳</div>
+      <div class="live-title" id="liveTitle">Connecting to the service…</div>
+      <div class="live-msg" id="liveMsg">Requesting access with your real IP address.</div>
+    </div>
+
+    <div class="panel">
+      <h2>What just happened</h2>
+      <p class="sub">
+        This origin can serve only <b>2 distinct client IPs</b> at a time. When you open this page
+        your browser's <b>real IP</b> tries to claim a slot. The 3rd person to open it (a different
+        IP) gets rejected — a genuine overload, no simulation.
+      </p>
+      <div class="livegrid">
+        <div><span class="k">Your IP</span><span class="v" id="myIp">…</span></div>
+        <div><span class="k">Served by origin</span><span class="v" id="myInstance">…</span></div>
+        <div><span class="k">Slots in use</span><span class="v" id="mySlots">…</span></div>
+      </div>
+      <div class="row">
+        <button class="ghost" onclick="disconnectReal()">Disconnect (free my slot)</button>
+        <button onclick="connectReal()">Try to connect again</button>
+      </div>
+      <pre id="liveRaw" class="muted">…</pre>
+    </div>
+
+    <div class="panel">
+      <h2>Run it as a class</h2>
+      <ol class="sub">
+        <li><b>Phase 1 — no load balancer.</b> Point everyone at this single origin. Only 2 people
+          get in; the rest see the red overload screen with their own IP.</li>
+        <li><b>Phase 2 — DP WAF in front.</b> Run several identical origins and give DP WAF their
+          URLs (IP Hash algorithm recommended). Everyone reloads — now they're spread across
+          origins and get in. The <b>“Served by origin”</b> value shows which instance answered.</li>
+      </ol>
+      <p class="sub">See <code>README.md</code> → “Running the load-balanced class demo” for exact commands.</p>
+    </div>
+  </main>
+  <footer>DP WAF training lab · live capacity test</footer>
+  <script src="app.js"></script>
+</body>
+</html>

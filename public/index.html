@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DP WAF — Practical Training Lab</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header>
+    <div class="logo"><span>DP</span> WAF &amp; Load Balancer — Training Lab</div>
+  </header>
+  <main>
+    <div class="banner">
+      ⚠ <b>Intentionally vulnerable — local training only.</b>
+      These apps reproduce, on purpose, the exact attacks DP WAF is built to stop.
+      Never expose them to the public internet.
+    </div>
+
+    <h1>Two practical scenarios</h1>
+    <p class="sub">Run each attack <b>bare</b> to see it succeed, then place the app behind DP WAF and re-run to see it blocked / balanced.</p>
+
+    <div class="cards">
+      <div class="card">
+        <h2>Scenario 1 — Web attack chain <span class="tag">WAF</span></h2>
+        <p>Follow a full real-world breach: a <b>SQL-injectable</b> login, a role-based dashboard
+          whose <b>unsigned cookie</b> can be edited to escalate to admin, and a public form
+          carrying a <b>stored XSS</b> payload that steals the admin cookie for <b>account takeover</b>.</p>
+        <ol class="steps">
+          <li><a href="login.html">Login</a> → <a href="dashboard">dashboard</a> — user vs admin sidebar (edit cookie to escalate)</li>
+          <li><a href="feedback.html">Public feedback form</a> — plant the XSS payload</li>
+          <li><a href="attacker.html">Attacker console</a> — watch the admin cookie get stolen</li>
+        </ol>
+        <p class="fix">✓ DP WAF blocks the SQLi and XSS requests before they ever reach the origin.</p>
+      </div>
+
+      <div class="card">
+        <h2>Scenario 2 — Capacity &amp; load balancing <span class="tag">Load Balancer</span></h2>
+        <p>Participants open the site from their <b>own real IPs</b>. A single origin serves only
+          <b>2 distinct IPs</b> — the 3rd person sees a real HTTP 503 overload. Put several origins
+          behind DP WAF (or the included balancer) and everyone gets in.</p>
+        <p class="fix">✓ DP WAF load balancing spreads traffic across many origins, and per-IP
+          control (FortiGate) drops abusive IPs, so no single server is overwhelmed.</p>
+        <a class="btn" href="capacity.html">Live capacity test →</a>
+        <p class="sub" style="margin-top:.6rem"><a href="capacity-simulated.html">Simulated-IP version</a> (one laptop, no class needed)</p>
+      </div>
+    </div>
+  </main>
+  <footer>DP WAF training lab · vulnerable by design · Presenter: Leng BunHeng</footer>
+</body>
+</html>
