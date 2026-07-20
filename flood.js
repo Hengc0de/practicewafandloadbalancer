@@ -48,6 +48,7 @@ function sendOne() {
     port,
     path: customPath,
     method: 'POST',
+    timeout: 5000,
     headers: { 'X-Forwarded-For': ip, 'Content-Type': 'application/json' },
   }, (res) => {
     res.resume();
@@ -58,6 +59,7 @@ function sendOne() {
   });
 
   req.on('error', () => { errs++; active--; tick(); });
+  req.on('timeout', () => { req.destroy(); errs++; active--; tick(); });
   req.end();
 }
 
