@@ -78,8 +78,8 @@ function esc(s) {
 
 // -- SQL Injection: login built by raw string concatenation (NEVER do this) --
 app.post('/api/login', (req, res) => {
-  const user = req.body.username ?? '';
-  const pass = req.body.password ?? '';
+  const user = req.body.username !== undefined && req.body.username !== null ? req.body.username : '';
+  const pass = req.body.password !== undefined && req.body.password !== null ? req.body.password : '';
 
   // The vulnerability: user input is concatenated straight into the SQL text.
   const sql =
@@ -121,8 +121,8 @@ function isNormalLogin(user, pass) {
 
 // -- Stored XSS sink: public feedback form, no auth, no sanitization ---------
 app.post('/api/feedback', (req, res) => {
-  const name = req.body.name ?? 'anonymous';
-  const message = req.body.message ?? '';
+  const name = req.body.name !== undefined && req.body.name !== null ? req.body.name : 'anonymous';
+  const message = req.body.message !== undefined && req.body.message !== null ? req.body.message : '';
   feedbackEntries.push({ name, message, time: new Date().toISOString() });
   res.json({ ok: true, message: 'Thanks! An administrator will review your feedback shortly.' });
 });
@@ -260,7 +260,7 @@ app.get('/api/collect/list', (req, res) => res.json({ collected }));
 
 // -- Prove takeover: replay a stolen token -----------------------------------
 app.post('/api/replay', (req, res) => {
-  const raw = String(req.body.token ?? '');
+  const raw = String(req.body.token !== undefined && req.body.token !== null ? req.body.token : '');
   // Attacker steals the whole cookie string; pull the dpwaf_session value out.
   const m = raw.match(/dpwaf_session=([^;\s]+)/);
   const value = m ? m[1] : raw.trim();
